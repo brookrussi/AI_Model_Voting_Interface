@@ -52,9 +52,8 @@ CREATE TABLE votes (
     turn_id UUID REFERENCES turns(id) ON DELETE CASCADE,
     position CHAR(1) NOT NULL CHECK (position IN ('A', 'B', 'C', 'D')),
     voter_session TEXT, -- simple session tracking
-    voted_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    voted_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
     -- Allow multiple votes per session per turn for now (could be changed to UNIQUE constraint)
-    INDEX(turn_id, position)
 );
 
 -- Create indexes for better query performance
