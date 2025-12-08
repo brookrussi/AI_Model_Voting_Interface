@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Model Response Voting</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f8f9fa;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            color: #2d3748;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #718096;
+            font-size: 16px;
+        }
+
+        .conversation-select {
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .conversation-select select {
+            padding: 12px 20px;
+            font-size: 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            background: white;
+            cursor: pointer;
+            min-width: 300px;
+        }
+
+        .turn {
+            background: white;
+            margin-bottom: 40px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .turn-header {
+            background: #4299e1;
+            color: white;
+            padding: 20px;
+        }
+
+        .turn-number {
+            font-size: 14px;
+            opacity: 0.9;
+            margin-bottom: 5px;
+        }
+
+        .user-prompt {
+            font-size: 18px;
+            font-weight: 500;
+            line-height: 1.4;
+        }
+
+        .responses-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            padding: 20px;
+        }
+
+        .response-card {
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            overflow: hidden;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        .response-card:hover {
+            border-color: #4299e1;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .response-card.selected {
+            border-color: #48bb78;
+            background-color: #f0fff4;
+        }
+
+        .response-header {
+            background: #f7fafc;
+            padding: 12px 16px;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .response-label {
+            font-weight: bold;
+            font-size: 20px;
+            color: #2d3748;
+        }
+
+        .vote-count {
+            background: #4299e1;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .response-text {
+            padding: 16px;
+            white-space: pre-wrap;
+            line-height: 1.5;
+        }
+
+        .voting-controls {
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .vote-button {
+            background: #48bb78;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .vote-button:hover {
+            background: #38a169;
+        }
+
+        .vote-button:disabled {
+            background: #a0aec0;
+            cursor: not-allowed;
+        }
+
+        .success-message {
+            background: #f0fff4;
+            color: #22543d;
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            text-align: center;
+            border: 2px solid #9ae6b4;
+        }
+
+        .error-message {
+            background: #fed7d7;
+            color: #742a2a;
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            text-align: center;
+            border: 2px solid #feb2b2;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #718096;
+        }
+
+        .progress-bar {
+            background: #e2e8f0;
+            height: 8px;
+            border-radius: 4px;
+            margin: 20px 0;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            background: #4299e1;
+            height: 100%;
+            transition: width 0.3s ease;
+        }
+
+        .stats {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 20px;
+            margin-top: 15px;
+        }
+
+        .stat-item {
+            padding: 10px;
+        }
+
+        .stat-number {
+            font-size: 24px;
+            font-weight: bold;
+            color: #4299e1;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            color: #718096;
+        }
+
+        @media (max-width: 768px) {
+            .responses-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .container {
+                padding: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>🤖 Model Response Voting</h1>
+            <p>Vote for the best responses in blind comparison tests. Model identities are hidden to prevent bias.</p>
+        </header>
+
+        <div class="conversation-select">
+            <select id="conversationSelect">
+                <option value="">Select a conversation to vote on...</option>
+            </select>
+        </div>
+
+        <div id="stats" class="stats" style="display: none;">
+            <h3>Voting Progress</h3>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div id="totalTurns" class="stat-number">0</div>
+                    <div class="stat-label">Total Turns</div>
+                </div>
+                <div class="stat-item">
+                    <div id="votedTurns" class="stat-number">0</div>
+                    <div class="stat-label">Voted On</div>
+                </div>
+                <div class="stat-item">
+                    <div id="remainingTurns" class="stat-number">0</div>
+                    <div class="stat-label">Remaining</div>
+                </div>
+            </div>
+            <div class="progress-bar">
+                <div id="progressFill" class="progress-fill" style="width: 0%;"></div>
+            </div>
+        </div>
+
+        <div id="loading" class="loading">
+            Loading conversations...
+        </div>
+
+        <div id="votingArea" style="display: none;"></div>
+    </div>
+
+    <script>
+        // Supabase configuration
+        const SUPABASE_URL = 'https://tmkobgbqrbaascebzbny.supabase.co';
+        const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY'; // You'll need to replace this
+
+        // Initialize Supabase client
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // Global state
+        let currentConversation = null;
+        let currentTurns = [];
+        let userVotes = new Set(); // Track which turns user has voted on
+        let voterSession = generateSessionId();
+
+        // Generate a unique session ID for this voting session
+        function generateSessionId() {
+            return 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        }
+
+        // Load conversations on page load
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadConversations();
+
+            document.getElementById('conversationSelect').addEventListener('change', async (e) => {
+                if (e.target.value) {
+                    await loadConversationTurns(e.target.value);
+                }
+            });
+        });
+
+        // Load available conversations
+        async function loadConversations() {
+            try {
+                const { data: conversations, error } = await supabase
+                    .from('conversations')
+                    .select('id, title, imported_at')
+                    .order('imported_at', { ascending: false });
+
+                if (error) throw error;
+
+                const select = document.getElementById('conversationSelect');
+                select.innerHTML = '<option value="">Select a conversation to vote on...</option>';
+
+                conversations.forEach(conv => {
+                    const option = document.createElement('option');
+                    option.value = conv.id;
+                    option.textContent = conv.title;
+                    select.appendChild(option);
+                });
+
+                document.getElementById('loading').style.display = 'none';
+            } catch (error) {
+                showError('Failed to load conversations: ' + error.message);
+            }
+        }
+
+        // Load turns for selected conversation
+        async function loadConversationTurns(conversationId) {
+            try {
+                showLoading('Loading conversation turns...');
+
+                const { data: turns, error } = await supabase
+                    .from('voting_interface')
+                    .select('*')
+                    .eq('conversation_id', conversationId)
+                    .order('turn_number');
+
+                if (error) throw error;
+
+                // Group responses by turn
+                const turnMap = {};
+                turns.forEach(turn => {
+                    if (!turnMap[turn.turn_id]) {
+                        turnMap[turn.turn_id] = {
+                            turn_id: turn.turn_id,
+                            turn_number: turn.turn_number,
+                            user_prompt: turn.user_prompt,
+                            responses: []
+                        };
+                    }
+
+                    turnMap[turn.turn_id].responses.push({
+                        position: turn.position,
+                        text: turn.response_text,
+                        current_votes: turn.current_votes
+                    });
+                });
+
+                currentTurns = Object.values(turnMap);
+                currentTurns.forEach(turn => {
+                    turn.responses.sort((a, b) => a.position.localeCompare(b.position));
+                });
+
+                // Reset voting state
+                userVotes.clear();
+
+                renderVotingInterface();
+                updateStats();
+                hideLoading();
+
+            } catch (error) {
+                showError('Failed to load conversation: ' + error.message);
+            }
+        }
+
+        // Render the voting interface
+        function renderVotingInterface() {
+            const votingArea = document.getElementById('votingArea');
+            votingArea.innerHTML = '';
+            votingArea.style.display = 'block';
+
+            currentTurns.forEach((turn, index) => {
+                const turnElement = createTurnElement(turn, index);
+                votingArea.appendChild(turnElement);
+            });
+
+            document.getElementById('stats').style.display = 'block';
+        }
+
+        // Create HTML element for a turn
+        function createTurnElement(turn, turnIndex) {
+            const turnDiv = document.createElement('div');
+            turnDiv.className = 'turn';
+            turnDiv.id = `turn-${turn.turn_id}`;
+
+            const hasVoted = userVotes.has(turn.turn_id);
+
+            turnDiv.innerHTML = `
+                <div class="turn-header">
+                    <div class="turn-number">Turn ${turn.turn_number}</div>
+                    <div class="user-prompt">${escapeHtml(turn.user_prompt)}</div>
+                </div>
+                <div class="responses-grid">
+                    ${turn.responses.map(response => `
+                        <div class="response-card" data-position="${response.position}" onclick="selectResponse('${turn.turn_id}', '${response.position}')">
+                            <div class="response-header">
+                                <div class="response-label">Response ${response.position}</div>
+                                <div class="vote-count">${response.current_votes} votes</div>
+                            </div>
+                            <div class="response-text">${escapeHtml(response.text)}</div>
+                        </div>
+                    `).join('')}
+                </div>
+                <div class="voting-controls">
+                    <button class="vote-button" id="vote-btn-${turn.turn_id}"
+                            onclick="submitVote('${turn.turn_id}')"
+                            ${hasVoted ? 'disabled' : ''}>
+                        ${hasVoted ? 'Already Voted' : 'Submit Vote'}
+                    </button>
+                    <div id="message-${turn.turn_id}"></div>
+                </div>
+            `;
+
+            return turnDiv;
+        }
+
+        // Select a response (highlight it)
+        function selectResponse(turnId, position) {
+            // Remove previous selections for this turn
+            const turnElement = document.getElementById(`turn-${turnId}`);
+            turnElement.querySelectorAll('.response-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+
+            // Add selection to clicked card
+            const selectedCard = turnElement.querySelector(`[data-position="${position}"]`);
+            selectedCard.classList.add('selected');
+
+            // Enable vote button
+            const voteButton = document.getElementById(`vote-btn-${turnId}`);
+            if (!userVotes.has(turnId)) {
+                voteButton.disabled = false;
+                voteButton.dataset.selectedPosition = position;
+            }
+        }
+
+        // Submit vote for a turn
+        async function submitVote(turnId) {
+            const voteButton = document.getElementById(`vote-btn-${turnId}`);
+            const selectedPosition = voteButton.dataset.selectedPosition;
+
+            if (!selectedPosition) {
+                showTurnMessage(turnId, 'Please select a response first.', 'error');
+                return;
+            }
+
+            try {
+                voteButton.disabled = true;
+                voteButton.textContent = 'Submitting...';
+
+                const { error } = await supabase
+                    .from('votes')
+                    .insert([{
+                        turn_id: turnId,
+                        position: selectedPosition,
+                        voter_session: voterSession
+                    }]);
+
+                if (error) throw error;
+
+                // Mark as voted
+                userVotes.add(turnId);
+                voteButton.textContent = 'Vote Submitted!';
+                showTurnMessage(turnId, '✅ Vote recorded successfully!', 'success');
+
+                // Update vote counts
+                await refreshVoteCounts(turnId);
+                updateStats();
+
+            } catch (error) {
+                voteButton.disabled = false;
+                voteButton.textContent = 'Submit Vote';
+                showTurnMessage(turnId, 'Failed to submit vote: ' + error.message, 'error');
+            }
+        }
+
+        // Refresh vote counts for a turn
+        async function refreshVoteCounts(turnId) {
+            try {
+                const { data: votes, error } = await supabase
+                    .from('voting_interface')
+                    .select('position, current_votes')
+                    .eq('turn_id', turnId);
+
+                if (error) throw error;
+
+                votes.forEach(vote => {
+                    const voteCountElement = document.querySelector(
+                        `#turn-${turnId} [data-position="${vote.position}"] .vote-count`
+                    );
+                    if (voteCountElement) {
+                        voteCountElement.textContent = `${vote.current_votes} votes`;
+                    }
+                });
+
+            } catch (error) {
+                console.error('Failed to refresh vote counts:', error);
+            }
+        }
+
+        // Update statistics display
+        function updateStats() {
+            const totalTurns = currentTurns.length;
+            const votedTurns = userVotes.size;
+            const remainingTurns = totalTurns - votedTurns;
+            const progressPercent = totalTurns > 0 ? (votedTurns / totalTurns) * 100 : 0;
+
+            document.getElementById('totalTurns').textContent = totalTurns;
+            document.getElementById('votedTurns').textContent = votedTurns;
+            document.getElementById('remainingTurns').textContent = remainingTurns;
+            document.getElementById('progressFill').style.width = `${progressPercent}%`;
+        }
+
+        // Show message for a specific turn
+        function showTurnMessage(turnId, message, type) {
+            const messageDiv = document.getElementById(`message-${turnId}`);
+            messageDiv.innerHTML = `<div class="${type}-message">${message}</div>`;
+            setTimeout(() => {
+                messageDiv.innerHTML = '';
+            }, 3000);
+        }
+
+        // Utility functions
+        function showError(message) {
+            const votingArea = document.getElementById('votingArea');
+            votingArea.innerHTML = `<div class="error-message">${message}</div>`;
+            votingArea.style.display = 'block';
+            hideLoading();
+        }
+
+        function showLoading(message = 'Loading...') {
+            const loading = document.getElementById('loading');
+            loading.textContent = message;
+            loading.style.display = 'block';
+        }
+
+        function hideLoading() {
+            document.getElementById('loading').style.display = 'none';
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Model Performance Analytics</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f8f9fa;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            color: #2d3748;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #718096;
+            font-size: 16px;
+        }
+
+        .controls {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .controls-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            align-items: center;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .control-group label {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #4a5568;
+        }
+
+        .control-group select {
+            padding: 10px;
+            border: 2px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .refresh-btn {
+            background: #4299e1;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            align-self: end;
+        }
+
+        .refresh-btn:hover {
+            background: #3182ce;
+        }
+
+        .stats-overview {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2.5em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            color: #718096;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .gemini { color: #4285f4; }
+        .claude { color: #ff6b35; }
+        .gpt4 { color: #10a37f; }
+        .gpt5 { color: #6c5ce7; }
+
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .chart-container {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .chart-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #2d3748;
+            text-align: center;
+        }
+
+        .detailed-results {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .table-header {
+            background: #4299e1;
+            color: white;
+            padding: 20px;
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .table-container {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        th {
+            background: #f7fafc;
+            font-weight: 600;
+            color: #4a5568;
+            position: sticky;
+            top: 0;
+        }
+
+        tr:hover {
+            background-color: #f7fafc;
+        }
+
+        .model-name {
+            font-weight: 600;
+        }
+
+        .win-rate {
+            font-weight: bold;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #718096;
+        }
+
+        .error-message {
+            background: #fed7d7;
+            color: #742a2a;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            text-align: center;
+            border: 2px solid #feb2b2;
+        }
+
+        .no-data {
+            text-align: center;
+            padding: 40px;
+            color: #718096;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        @media (max-width: 768px) {
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+            .controls-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>📊 Model Performance Analytics</h1>
+            <p>Detailed analysis of model performance based on blind voting results</p>
+        </header>
+
+        <div class="controls">
+            <div class="controls-grid">
+                <div class="control-group">
+                    <label for="conversationSelect">Conversation</label>
+                    <select id="conversationSelect">
+                        <option value="">All Conversations</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label for="dateRange">Date Range</label>
+                    <select id="dateRange">
+                        <option value="all">All Time</option>
+                        <option value="7">Last 7 Days</option>
+                        <option value="30">Last 30 Days</option>
+                        <option value="90">Last 90 Days</option>
+                    </select>
+                </div>
+                <button class="refresh-btn" onclick="loadAnalytics()">🔄 Refresh Data</button>
+            </div>
+        </div>
+
+        <div id="loading" class="loading">
+            Loading analytics data...
+        </div>
+
+        <div id="analyticsContent" style="display: none;">
+            <div class="stats-overview">
+                <div class="stat-card">
+                    <div class="stat-value" id="totalVotes">0</div>
+                    <div class="stat-label">Total Votes</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="totalTurns">0</div>
+                    <div class="stat-label">Total Turns</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="totalConversations">0</div>
+                    <div class="stat-label">Conversations</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="avgVotesPerTurn">0</div>
+                    <div class="stat-label">Avg Votes/Turn</div>
+                </div>
+            </div>
+
+            <div class="charts-grid">
+                <div class="chart-container">
+                    <div class="chart-title">Overall Model Performance</div>
+                    <canvas id="overallChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-title">Win Rate by Model</div>
+                    <canvas id="winRateChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-title">Votes Over Time</div>
+                    <canvas id="timelineChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-title">Performance by Conversation</div>
+                    <canvas id="conversationChart"></canvas>
+                </div>
+            </div>
+
+            <div class="detailed-results">
+                <div class="table-header">Detailed Results</div>
+                <div class="table-container">
+                    <table id="resultsTable">
+                        <thead>
+                            <tr>
+                                <th>Model</th>
+                                <th>Total Votes</th>
+                                <th>Turns Won</th>
+                                <th>Total Turns</th>
+                                <th>Win Rate</th>
+                                <th>Avg Votes/Turn</th>
+                            </tr>
+                        </thead>
+                        <tbody id="resultsTableBody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="errorMessage" style="display: none;"></div>
+        <div id="noData" class="no-data" style="display: none;">
+            <h3>No Data Available</h3>
+            <p>No voting data found. Make sure conversations have been imported and votes have been cast.</p>
+        </div>
+    </div>
+
+    <script>
+        // Supabase configuration
+        const SUPABASE_URL = 'https://tmkobgbqrbaascebzbny.supabase.co';
+        const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY'; // You'll need to replace this
+
+        // Initialize Supabase client
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // Model colors and names
+        const MODEL_CONFIG = {
+            'google/gemini-2.5-pro': { name: 'Gemini 2.5 Pro', color: '#4285f4', class: 'gemini' },
+            'anthropic/claude-sonnet-4.5': { name: 'Claude Sonnet 4.5', color: '#ff6b35', class: 'claude' },
+            'openai/gpt-4.1': { name: 'GPT-4.1', color: '#10a37f', class: 'gpt4' },
+            'openai/gpt-5': { name: 'GPT-5', color: '#6c5ce7', class: 'gpt5' }
+        };
+
+        // Chart instances
+        let charts = {};
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadConversations();
+            await loadAnalytics();
+
+            // Set up event listeners
+            document.getElementById('conversationSelect').addEventListener('change', loadAnalytics);
+            document.getElementById('dateRange').addEventListener('change', loadAnalytics);
+        });
+
+        // Load available conversations for filter
+        async function loadConversations() {
+            try {
+                const { data: conversations, error } = await supabase
+                    .from('conversations')
+                    .select('id, title')
+                    .order('title');
+
+                if (error) throw error;
+
+                const select = document.getElementById('conversationSelect');
+                conversations.forEach(conv => {
+                    const option = document.createElement('option');
+                    option.value = conv.id;
+                    option.textContent = conv.title;
+                    select.appendChild(option);
+                });
+
+            } catch (error) {
+                console.error('Failed to load conversations:', error);
+            }
+        }
+
+        // Load and display analytics
+        async function loadAnalytics() {
+            try {
+                showLoading();
+
+                const conversationId = document.getElementById('conversationSelect').value;
+                const dateRange = document.getElementById('dateRange').value;
+
+                // Build query filters
+                let query = supabase.from('vote_results').select('*');
+
+                if (conversationId) {
+                    // We'll need to join with conversations table for this filter
+                    query = supabase
+                        .from('vote_results')
+                        .select(`
+                            *,
+                            turns!inner(conversation_id)
+                        `)
+                        .eq('turns.conversation_id', conversationId);
+                }
+
+                if (dateRange !== 'all') {
+                    const daysAgo = new Date();
+                    daysAgo.setDate(daysAgo.getDate() - parseInt(dateRange));
+                    query = query.gte('voted_at', daysAgo.toISOString());
+                }
+
+                const { data: results, error } = await query;
+
+                if (error) throw error;
+
+                if (!results || results.length === 0) {
+                    showNoData();
+                    return;
+                }
+
+                // Process and display results
+                const analytics = processAnalyticsData(results);
+                displayAnalytics(analytics);
+                hideLoading();
+
+            } catch (error) {
+                showError('Failed to load analytics: ' + error.message);
+            }
+        }
+
+        // Process raw data into analytics structure
+        function processAnalyticsData(results) {
+            const analytics = {
+                totalVotes: 0,
+                totalTurns: new Set(),
+                totalConversations: new Set(),
+                modelStats: {},
+                timelineData: {},
+                conversationStats: {}
+            };
+
+            // Initialize model stats
+            Object.keys(MODEL_CONFIG).forEach(model => {
+                analytics.modelStats[model] = {
+                    totalVotes: 0,
+                    turnsWon: 0,
+                    turnsParticipated: new Set()
+                };
+            });
+
+            // Process each result
+            results.forEach(result => {
+                analytics.totalVotes += result.vote_count;
+                analytics.totalTurns.add(result.turn_number);
+                analytics.totalConversations.add(result.conversation_title);
+
+                const model = result.model_name;
+                if (analytics.modelStats[model]) {
+                    analytics.modelStats[model].totalVotes += result.vote_count;
+                    analytics.modelStats[model].turnsParticipated.add(result.turn_number);
+
+                    // Track wins (highest vote count for this turn)
+                    // Note: This is a simplified approach - in reality we'd need to compare all models for each turn
+                    if (result.vote_count > 0) {
+                        // For now, count any turn with votes as participation
+                        // A more sophisticated approach would determine actual winners per turn
+                    }
+                }
+
+                // Timeline data (group by date)
+                if (result.voted_at) {
+                    const date = new Date(result.voted_at).toDateString();
+                    if (!analytics.timelineData[date]) {
+                        analytics.timelineData[date] = 0;
+                    }
+                    analytics.timelineData[date] += result.vote_count;
+                }
+
+                // Conversation stats
+                if (!analytics.conversationStats[result.conversation_title]) {
+                    analytics.conversationStats[result.conversation_title] = {};
+                }
+                if (!analytics.conversationStats[result.conversation_title][model]) {
+                    analytics.conversationStats[result.conversation_title][model] = 0;
+                }
+                analytics.conversationStats[result.conversation_title][model] += result.vote_count;
+            });
+
+            // Convert sets to counts
+            analytics.totalTurns = analytics.totalTurns.size;
+            analytics.totalConversations = analytics.totalConversations.size;
+
+            Object.keys(analytics.modelStats).forEach(model => {
+                analytics.modelStats[model].turnsParticipated = analytics.modelStats[model].turnsParticipated.size;
+            });
+
+            return analytics;
+        }
+
+        // Display analytics results
+        function displayAnalytics(analytics) {
+            // Update overview stats
+            document.getElementById('totalVotes').textContent = analytics.totalVotes.toLocaleString();
+            document.getElementById('totalTurns').textContent = analytics.totalTurns.toLocaleString();
+            document.getElementById('totalConversations').textContent = analytics.totalConversations.toLocaleString();
+
+            const avgVotesPerTurn = analytics.totalTurns > 0 ? (analytics.totalVotes / analytics.totalTurns).toFixed(1) : 0;
+            document.getElementById('avgVotesPerTurn').textContent = avgVotesPerTurn;
+
+            // Create charts
+            createOverallChart(analytics.modelStats);
+            createWinRateChart(analytics.modelStats);
+            createTimelineChart(analytics.timelineData);
+            createConversationChart(analytics.conversationStats);
+
+            // Update detailed table
+            updateResultsTable(analytics.modelStats);
+
+            // Show analytics content
+            document.getElementById('analyticsContent').style.display = 'block';
+        }
+
+        // Create overall performance chart
+        function createOverallChart(modelStats) {
+            const ctx = document.getElementById('overallChart').getContext('2d');
+
+            if (charts.overall) charts.overall.destroy();
+
+            const models = Object.keys(modelStats);
+            const votes = models.map(model => modelStats[model].totalVotes);
+            const colors = models.map(model => MODEL_CONFIG[model].color);
+            const labels = models.map(model => MODEL_CONFIG[model].name);
+
+            charts.overall = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: votes,
+                        backgroundColor: colors,
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+
+        // Create win rate chart
+        function createWinRateChart(modelStats) {
+            const ctx = document.getElementById('winRateChart').getContext('2d');
+
+            if (charts.winRate) charts.winRate.destroy();
+
+            const models = Object.keys(modelStats);
+            const winRates = models.map(model => {
+                const stats = modelStats[model];
+                return stats.turnsParticipated > 0 ? (stats.turnsWon / stats.turnsParticipated * 100) : 0;
+            });
+            const colors = models.map(model => MODEL_CONFIG[model].color);
+            const labels = models.map(model => MODEL_CONFIG[model].name);
+
+            charts.winRate = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Win Rate (%)',
+                        data: winRates,
+                        backgroundColor: colors,
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+        }
+
+        // Create timeline chart
+        function createTimelineChart(timelineData) {
+            const ctx = document.getElementById('timelineChart').getContext('2d');
+
+            if (charts.timeline) charts.timeline.destroy();
+
+            const dates = Object.keys(timelineData).sort();
+            const votes = dates.map(date => timelineData[date]);
+
+            charts.timeline = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: dates,
+                    datasets: [{
+                        label: 'Votes',
+                        data: votes,
+                        borderColor: '#4299e1',
+                        backgroundColor: 'rgba(66, 153, 225, 0.1)',
+                        borderWidth: 2,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+        }
+
+        // Create conversation performance chart
+        function createConversationChart(conversationStats) {
+            const ctx = document.getElementById('conversationChart').getContext('2d');
+
+            if (charts.conversation) charts.conversation.destroy();
+
+            const conversations = Object.keys(conversationStats);
+            const models = Object.keys(MODEL_CONFIG);
+
+            const datasets = models.map(model => ({
+                label: MODEL_CONFIG[model].name,
+                data: conversations.map(conv => conversationStats[conv][model] || 0),
+                backgroundColor: MODEL_CONFIG[model].color
+            }));
+
+            charts.conversation = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: conversations,
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: {
+                            stacked: true
+                        },
+                        y: {
+                            stacked: true,
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        // Update detailed results table
+        function updateResultsTable(modelStats) {
+            const tbody = document.getElementById('resultsTableBody');
+            tbody.innerHTML = '';
+
+            Object.entries(modelStats).forEach(([model, stats]) => {
+                const config = MODEL_CONFIG[model];
+                const winRate = stats.turnsParticipated > 0 ? (stats.turnsWon / stats.turnsParticipated * 100).toFixed(1) : 0;
+                const avgVotes = stats.turnsParticipated > 0 ? (stats.totalVotes / stats.turnsParticipated).toFixed(1) : 0;
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td><span class="model-name ${config.class}">${config.name}</span></td>
+                    <td>${stats.totalVotes.toLocaleString()}</td>
+                    <td>${stats.turnsWon}</td>
+                    <td>${stats.turnsParticipated}</td>
+                    <td><span class="win-rate">${winRate}%</span></td>
+                    <td>${avgVotes}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // Utility functions
+        function showLoading() {
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('analyticsContent').style.display = 'none';
+            document.getElementById('errorMessage').style.display = 'none';
+            document.getElementById('noData').style.display = 'none';
+        }
+
+        function hideLoading() {
+            document.getElementById('loading').style.display = 'none';
+        }
+
+        function showError(message) {
+            document.getElementById('errorMessage').innerHTML = `<div class="error-message">${message}</div>`;
+            document.getElementById('errorMessage').style.display = 'block';
+            document.getElementById('analyticsContent').style.display = 'none';
+            document.getElementById('noData').style.display = 'none';
+            hideLoading();
+        }
+
+        function showNoData() {
+            document.getElementById('noData').style.display = 'block';
+            document.getElementById('analyticsContent').style.display = 'none';
+            document.getElementById('errorMessage').style.display = 'none';
+            hideLoading();
+        }
+    </script>
+</body>
+</html>
