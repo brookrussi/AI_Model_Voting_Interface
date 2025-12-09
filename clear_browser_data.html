@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clear Browser Data</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        h1 { color: #2d3748; }
+        .action-btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 10px 5px;
+            font-size: 16px;
+        }
+        .action-btn:hover { background: #c82333; }
+        .success { background: #d4edda; padding: 15px; border-radius: 8px; margin: 20px 0; color: #155724; }
+        .info { background: #d1ecf1; padding: 15px; border-radius: 8px; margin: 20px 0; color: #0c5460; }
+        .step { margin: 20px 0; padding: 15px; background: #f8f9fa; border-radius: 8px; }
+        .step h3 { margin-top: 0; color: #495057; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧹 Clear Test Data</h1>
+        <p>Use this page to clear all test voting data and start fresh with your voting system.</p>
+
+        <div class="step">
+            <h3>Step 1: Clear Supabase Database</h3>
+            <p>Run this SQL in your Supabase SQL Editor to delete all test votes:</p>
+            <button class="action-btn" onclick="copyToClipboard('cleanup_test_data.sql')">📋 Copy SQL Script</button>
+            <div id="sql-content" style="display: none;">
+-- Complete Test Data Cleanup Script
+-- Run this in Supabase SQL Editor
+
+-- Show what we're about to delete
+SELECT
+    'BEFORE CLEANUP:' as status,
+    (SELECT COUNT(*) FROM votes) as total_votes,
+    (SELECT COUNT(DISTINCT voter_session) FROM votes) as unique_sessions;
+
+-- Delete all test votes
+DELETE FROM votes;
+
+-- Verify cleanup
+SELECT
+    'AFTER CLEANUP:' as status,
+    (SELECT COUNT(*) FROM votes) as total_votes;
+            </div>
+        </div>
+
+        <div class="step">
+            <h3>Step 2: Clear Browser Session Data</h3>
+            <p>Clear your browser's session data for this voting system:</p>
+            <button class="action-btn" onclick="clearBrowserData()">🗑️ Clear Browser Data</button>
+            <div id="browser-status"></div>
+        </div>
+
+        <div class="step">
+            <h3>Step 3: Verify Clean State</h3>
+            <p>Check that your dashboards show clean data:</p>
+            <button class="action-btn" onclick="window.open('voting_interface.html', '_blank')" style="background: #28a745;">📊 Check Voting Interface</button>
+            <button class="action-btn" onclick="window.open('analytics_dashboard.html', '_blank')" style="background: #28a745;">📈 Check Analytics</button>
+            <button class="action-btn" onclick="window.open('notes_dashboard.html', '_blank')" style="background: #28a745;">📝 Check Notes</button>
+        </div>
+
+        <div class="info">
+            <strong>What gets cleared:</strong>
+            <ul>
+                <li>All votes from Supabase (conversations and responses remain)</li>
+                <li>Browser session storage</li>
+                <li>Local caches</li>
+            </ul>
+            <strong>What stays:</strong>
+            <ul>
+                <li>Your conversation data</li>
+                <li>Model responses</li>
+                <li>Position randomizations</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        function copyToClipboard(filename) {
+            const sqlContent = document.getElementById('sql-content').textContent;
+            navigator.clipboard.writeText(sqlContent).then(() => {
+                document.getElementById('browser-status').innerHTML =
+                    '<div class="success">✅ SQL script copied to clipboard! Paste it in Supabase SQL Editor.</div>';
+            });
+        }
+
+        function clearBrowserData() {
+            try {
+                // Clear session storage
+                sessionStorage.clear();
+
+                // Clear local storage for this domain
+                localStorage.clear();
+
+                // Clear any cached data
+                if ('caches' in window) {
+                    caches.keys().then(names => {
+                        names.forEach(name => caches.delete(name));
+                    });
+                }
+
+                document.getElementById('browser-status').innerHTML =
+                    '<div class="success">✅ Browser data cleared! Refresh your voting pages to see clean state.</div>';
+
+            } catch (error) {
+                document.getElementById('browser-status').innerHTML =
+                    '<div style="background: #f8d7da; padding: 15px; border-radius: 8px; color: #721c24;">❌ Error clearing browser data. Try manually refreshing your browser or clearing cache.</div>';
+            }
+        }
+    </script>
+</body>
+</html>

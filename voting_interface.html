@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Model Response Voting</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         * {
@@ -12,36 +15,80 @@
             box-sizing: border-box;
         }
 
+        :root {
+            /* Deloitte Brand Colors */
+            --deloitte-green: #86BC25;
+            --deloitte-blue: #0076A8;
+            --deloitte-grey: #62666A;
+            --deloitte-light-grey: #F4F4F4;
+            --deloitte-dark-grey: #3D4043;
+
+            /* Modern UI Colors */
+            --background: #FAFBFC;
+            --surface: #FFFFFF;
+            --surface-hover: #F8F9FA;
+            --border-light: #E8EAED;
+            --border-medium: #DADCE0;
+            --text-primary: #202124;
+            --text-secondary: #5F6368;
+            --text-tertiary: #80868B;
+            --shadow-light: 0 1px 3px rgba(60, 64, 67, 0.08);
+            --shadow-medium: 0 4px 12px rgba(60, 64, 67, 0.15);
+            --radius: 8px;
+            --radius-large: 12px;
+        }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            background-color: #f8f9fa;
-            padding: 20px;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.5;
+            color: var(--text-primary);
+            background: linear-gradient(135deg, var(--background) 0%, #F0F2F5 100%);
+            min-height: 100vh;
+            padding: 0;
+            margin: 0;
         }
 
         .container {
             max-width: 1200px;
             margin: 0 auto;
+            padding: 24px;
         }
 
         .header {
             text-align: center;
             margin-bottom: 40px;
-            background: white;
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            background: var(--surface);
+            padding: 48px 32px;
+            border-radius: var(--radius-large);
+            box-shadow: var(--shadow-medium);
+            border: 1px solid var(--border-light);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--deloitte-green) 0%, var(--deloitte-blue) 100%);
         }
 
         .header h1 {
-            color: #2d3748;
-            margin-bottom: 10px;
+            color: var(--text-primary);
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 12px;
+            letter-spacing: -0.025em;
         }
 
         .header p {
-            color: #718096;
-            font-size: 16px;
+            color: var(--text-secondary);
+            font-size: 1.125rem;
+            max-width: 600px;
+            margin: 0 auto;
         }
 
         .conversation-select {
@@ -60,145 +107,220 @@
         }
 
         .turn {
-            background: white;
-            margin-bottom: 40px;
-            border-radius: 12px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            background: var(--surface);
+            margin-bottom: 48px;
+            border-radius: var(--radius-large);
+            box-shadow: var(--shadow-medium);
+            border: 1px solid var(--border-light);
             overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .turn:hover {
+            box-shadow: 0 8px 24px rgba(60, 64, 67, 0.12);
         }
 
         .turn-header {
-            background: #4299e1;
+            background: linear-gradient(135deg, var(--deloitte-blue) 0%, var(--deloitte-green) 100%);
             color: white;
-            padding: 20px;
+            padding: 32px;
+            position: relative;
         }
 
         .turn-number {
-            font-size: 14px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
             opacity: 0.9;
-            margin-bottom: 5px;
+            margin-bottom: 8px;
         }
 
         .user-prompt {
-            font-size: 18px;
+            font-size: 1.25rem;
             font-weight: 500;
             line-height: 1.4;
+            margin: 0;
         }
 
         .responses-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            gap: 15px;
-            padding: 20px;
+            gap: 20px;
+            padding: 32px;
+            background: var(--surface);
         }
 
         /* Responsive breakpoints for smaller screens */
         @media (max-width: 1200px) {
             .responses-grid {
                 grid-template-columns: repeat(2, 1fr);
+                gap: 24px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .responses-grid {
+                grid-template-columns: 1fr;
                 gap: 20px;
             }
         }
 
         .response-card {
-            border: 2px solid #e2e8f0;
-            border-radius: 8px;
+            border: 2px solid var(--border-light);
+            border-radius: var(--radius);
             overflow: hidden;
-            transition: all 0.2s ease;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             cursor: pointer;
+            background: var(--surface);
+            position: relative;
         }
 
         .response-card:hover {
-            border-color: #4299e1;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            border-color: var(--deloitte-blue);
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-medium);
         }
 
         .response-card.selected {
-            border-color: #48bb78;
-            background-color: #f0fff4;
+            border-color: var(--deloitte-green);
+            background: linear-gradient(135deg, rgba(134, 188, 37, 0.05) 0%, rgba(134, 188, 37, 0.02) 100%);
+            box-shadow: 0 0 0 4px rgba(134, 188, 37, 0.1);
         }
 
         .response-header {
-            background: #f7fafc;
-            padding: 12px 16px;
-            border-bottom: 1px solid #e2e8f0;
+            background: var(--deloitte-light-grey);
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border-light);
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
 
         .response-label {
-            font-weight: bold;
-            font-size: 20px;
-            color: #2d3748;
+            font-weight: 600;
+            font-size: 1.125rem;
+            color: var(--text-primary);
+            letter-spacing: -0.025em;
         }
 
         .vote-count {
-            background: #4299e1;
+            background: linear-gradient(135deg, var(--deloitte-blue) 0%, var(--deloitte-green) 100%);
             color: white;
-            padding: 4px 8px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: bold;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.025em;
         }
 
         .response-text {
+            padding: 24px;
+            line-height: 1.6;
+            color: var(--text-primary);
+            font-size: 0.9375rem;
+        }
+
+        .notes-section {
+            padding: 24px 32px;
+            border-top: 1px solid var(--border-light);
+            background: linear-gradient(135deg, var(--surface-hover) 0%, rgba(248, 249, 250, 0.5) 100%);
+        }
+
+        .notes-textarea {
+            width: 100%;
+            min-height: 100px;
             padding: 16px;
-            white-space: pre-wrap;
-            line-height: 1.5;
+            border: 2px solid var(--border-light);
+            border-radius: var(--radius);
+            font-size: 0.9375rem;
+            font-family: inherit;
+            resize: vertical;
+            background: var(--surface);
+            color: var(--text-primary);
+            transition: all 0.3s ease;
+        }
+
+        .notes-textarea::placeholder {
+            color: var(--text-tertiary);
+            font-style: italic;
+        }
+
+        .notes-textarea:focus {
+            outline: none;
+            border-color: var(--deloitte-green);
+            box-shadow: 0 0 0 4px rgba(134, 188, 37, 0.1);
+        }
+
+        .notes-textarea:disabled {
+            background: var(--deloitte-light-grey);
+            color: var(--text-secondary);
+            cursor: not-allowed;
         }
 
         .voting-controls {
             text-align: center;
-            margin: 20px 0;
+            padding: 32px;
+            background: var(--surface);
+            border-top: 1px solid var(--border-light);
         }
 
         .vote-button {
-            background: #48bb78;
+            background: linear-gradient(135deg, var(--deloitte-green) 0%, #9BC53D 100%);
             color: white;
             border: none;
-            padding: 12px 24px;
-            font-size: 16px;
-            font-weight: bold;
-            border-radius: 8px;
+            padding: 16px 32px;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 50px;
             cursor: pointer;
-            transition: background-color 0.2s;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: var(--shadow-light);
+            letter-spacing: 0.025em;
+            min-width: 160px;
         }
 
         .vote-button:hover {
-            background: #38a169;
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-medium);
+            background: linear-gradient(135deg, #7BA823 0%, var(--deloitte-green) 100%);
         }
 
         .vote-button:disabled {
-            background: #a0aec0;
+            background: var(--deloitte-grey);
             cursor: not-allowed;
+            transform: none;
+            box-shadow: var(--shadow-light);
         }
 
         .success-message {
-            background: #f0fff4;
-            color: #22543d;
-            padding: 12px 20px;
-            border-radius: 8px;
+            background: linear-gradient(135deg, rgba(134, 188, 37, 0.1) 0%, rgba(134, 188, 37, 0.05) 100%);
+            color: var(--deloitte-green);
+            padding: 16px 24px;
+            border-radius: var(--radius);
             margin: 20px 0;
             text-align: center;
-            border: 2px solid #9ae6b4;
+            border: 1px solid rgba(134, 188, 37, 0.3);
+            font-weight: 500;
         }
 
         .error-message {
-            background: #fed7d7;
-            color: #742a2a;
-            padding: 12px 20px;
-            border-radius: 8px;
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(239, 68, 68, 0.05) 100%);
+            color: #dc2626;
+            padding: 16px 24px;
+            border-radius: var(--radius);
             margin: 20px 0;
             text-align: center;
-            border: 2px solid #feb2b2;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            font-weight: 500;
         }
 
         .loading {
             text-align: center;
-            padding: 40px;
-            color: #718096;
+            padding: 64px;
+            color: var(--text-secondary);
+            font-size: 1.125rem;
+            font-weight: 500;
         }
 
         .progress-bar {
@@ -264,11 +386,7 @@
             <p>Vote for the best responses in blind comparison tests. Model identities are hidden to prevent bias.</p>
         </header>
 
-        <div class="conversation-select">
-            <select id="conversationSelect">
-                <option value="">Select a conversation to vote on...</option>
-            </select>
-        </div>
+        <!-- Conversation auto-loads - no user selection needed -->
 
         <div id="stats" class="stats" style="display: none;">
             <h3>Voting Progress</h3>
@@ -317,40 +435,32 @@
             return 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
         }
 
-        // Load conversations on page load
+        // Auto-load the active conversation on page load
         document.addEventListener('DOMContentLoaded', async () => {
-            await loadConversations();
-
-            document.getElementById('conversationSelect').addEventListener('change', async (e) => {
-                if (e.target.value) {
-                    await loadConversationTurns(e.target.value);
-                }
-            });
+            await loadActiveConversation();
         });
 
-        // Load available conversations
-        async function loadConversations() {
+        // Load the active conversation automatically
+        async function loadActiveConversation() {
             try {
+                // Get the most recent conversation (you control which one this is)
                 const { data: conversations, error } = await supabase
                     .from('conversations')
                     .select('id, title, imported_at')
-                    .order('imported_at', { ascending: false });
+                    .order('imported_at', { ascending: false })
+                    .limit(1);
 
                 if (error) throw error;
 
-                const select = document.getElementById('conversationSelect');
-                select.innerHTML = '<option value="">Select a conversation to vote on...</option>';
-
-                conversations.forEach(conv => {
-                    const option = document.createElement('option');
-                    option.value = conv.id;
-                    option.textContent = conv.title;
-                    select.appendChild(option);
-                });
-
-                document.getElementById('loading').style.display = 'none';
+                if (conversations && conversations.length > 0) {
+                    const activeConversation = conversations[0];
+                    document.getElementById('loading').textContent = `Loading: ${activeConversation.title}...`;
+                    await loadConversationTurns(activeConversation.id);
+                } else {
+                    showError('No conversations available for voting.');
+                }
             } catch (error) {
-                showError('Failed to load conversations: ' + error.message);
+                showError('Failed to load conversation: ' + error.message);
             }
         }
 
@@ -391,8 +501,9 @@
                     turn.responses.sort((a, b) => a.position.localeCompare(b.position));
                 });
 
-                // Reset voting state
+                // Reset voting state and check for existing votes
                 userVotes.clear();
+                await loadExistingVotes();
 
                 renderVotingInterface();
                 updateStats();
@@ -428,7 +539,7 @@
             turnDiv.innerHTML = `
                 <div class="turn-header">
                     <div class="turn-number">Turn ${turn.turn_number}</div>
-                    <div class="user-prompt">${escapeHtml(turn.user_prompt)}</div>
+                    <div class="user-prompt">${formatMarkdown(turn.user_prompt)}</div>
                 </div>
                 <div class="responses-grid">
                     ${turn.responses.map(response => `
@@ -437,9 +548,17 @@
                                 <div class="response-label">Response ${response.position}</div>
                                 <div class="vote-count">${response.current_votes} votes</div>
                             </div>
-                            <div class="response-text">${escapeHtml(response.text)}</div>
+                            <div class="response-text">${formatMarkdown(response.text)}</div>
                         </div>
                     `).join('')}
+                </div>
+                <div class="notes-section">
+                    <textarea
+                        class="notes-textarea"
+                        id="notes-${turn.turn_id}"
+                        placeholder="What did you like about the response you chose? Is there anything from the other responses that you liked?"
+                        rows="4"
+                        ${hasVoted ? 'disabled style="opacity: 0.6;"' : ''}></textarea>
                 </div>
                 <div class="voting-controls">
                     <button class="vote-button" id="vote-btn-${turn.turn_id}"
@@ -474,6 +593,47 @@
             }
         }
 
+        // Load existing votes for the current session
+        async function loadExistingVotes() {
+            try {
+                const turnIds = currentTurns.map(turn => turn.turn_id);
+                const { data: existingVotes, error } = await supabase
+                    .from('votes')
+                    .select('turn_id, position, notes')
+                    .eq('voter_session', voterSession)
+                    .in('turn_id', turnIds);
+
+                if (error) throw error;
+
+                // Mark turns as voted
+                existingVotes?.forEach(vote => {
+                    userVotes.add(vote.turn_id);
+                });
+
+            } catch (error) {
+                console.error('Error loading existing votes:', error);
+            }
+        }
+
+        // Check if user has already voted on this turn
+        async function checkExistingVote(turnId) {
+            try {
+                const { data, error } = await supabase
+                    .from('votes')
+                    .select('id, position, notes')
+                    .eq('turn_id', turnId)
+                    .eq('voter_session', voterSession)
+                    .single();
+
+                if (error && error.code !== 'PGRST116') throw error; // PGRST116 = not found, which is expected
+
+                return data; // null if no vote found, vote object if found
+            } catch (error) {
+                console.error('Error checking existing vote:', error);
+                return null;
+            }
+        }
+
         // Submit vote for a turn
         async function submitVote(turnId) {
             const voteButton = document.getElementById(`vote-btn-${turnId}`);
@@ -484,24 +644,51 @@
                 return;
             }
 
+            // Check if user already voted on this turn
+            const existingVote = await checkExistingVote(turnId);
+            if (existingVote) {
+                showTurnMessage(turnId, `You already voted for position ${existingVote.position} on this turn.`, 'error');
+                return;
+            }
+
             try {
                 voteButton.disabled = true;
                 voteButton.textContent = 'Submitting...';
+
+                // Get notes from the single notes textarea for this turn
+                const notesTextarea = document.getElementById(`notes-${turnId}`);
+                const notes = notesTextarea ? notesTextarea.value.trim() : '';
 
                 const { error } = await supabase
                     .from('votes')
                     .insert([{
                         turn_id: turnId,
                         position: selectedPosition,
-                        voter_session: voterSession
+                        voter_session: voterSession,
+                        notes: notes
                     }]);
 
-                if (error) throw error;
+                if (error) {
+                    // Handle duplicate key constraint error specifically
+                    if (error.code === '23505' || error.message.includes('unique_vote_per_session_per_turn')) {
+                        showTurnMessage(turnId, 'You have already voted on this turn.', 'error');
+                        voteButton.disabled = false;
+                        voteButton.textContent = 'Submit Vote';
+                        return;
+                    }
+                    throw error;
+                }
 
                 // Mark as voted
                 userVotes.add(turnId);
-                voteButton.textContent = 'Vote Submitted!';
-                showTurnMessage(turnId, '✅ Vote recorded successfully!', 'success');
+                voteButton.textContent = 'Already Voted';
+                showTurnMessage(turnId, '✅ Vote and notes recorded successfully!', 'success');
+
+                // Disable the notes textarea for this turn
+                if (notesTextarea) {
+                    notesTextarea.disabled = true;
+                    notesTextarea.style.opacity = '0.6';
+                }
 
                 // Update vote counts
                 await refreshVoteCounts(turnId);
@@ -582,6 +769,47 @@
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
+        }
+
+        // Clean and format response text
+        function formatMarkdown(text) {
+            if (!text) return '';
+
+            // Remove reasoning sections (GPT internal thinking)
+            let cleaned = text
+                .replace(/### Reasoning[\s\S]*?(?=###|$)/gi, '') // Remove ### Reasoning sections
+                .replace(/##+ Reasoning[\s\S]*?(?=##|$)/gi, '')  // Remove ## Reasoning sections
+                .replace(/\*\*Reasoning\*\*[\s\S]*?(?=\*\*|$)/gi, '') // Remove **Reasoning** sections
+                .trim();
+
+            // First escape HTML to prevent XSS
+            let formatted = escapeHtml(cleaned);
+
+            // Convert markdown formatting
+            formatted = formatted
+                // Bold text: **text** or __text__
+                .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+                .replace(/__([^_]+)__/g, '<strong>$1</strong>')
+
+                // Italic text: *text* or _text_
+                .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+                .replace(/_([^_]+)_/g, '<em>$1</em>')
+
+                // Convert bullet points
+                .replace(/^[\s]*[\*\-\+][\s]+(.+)$/gm, '<li>$1</li>')
+
+                // Convert numbered lists
+                .replace(/^[\s]*(\d+)\.[\s]+(.+)$/gm, '<li>$2</li>')
+
+                // Wrap consecutive <li> elements in <ul>
+                .replace(/(<li>.*?<\/li>)(\s*<li>.*?<\/li>)*/g, function(match) {
+                    return '<ul>' + match + '</ul>';
+                })
+
+                // Convert line breaks to <br>
+                .replace(/\n/g, '<br>');
+
+            return formatted;
         }
     </script>
 </body>

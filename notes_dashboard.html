@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notes Dashboard - Model Voting Results</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root {
+            --deloitte-green: #86BC25;
+            --deloitte-blue: #0076A8;
+            --deloitte-grey: #62666A;
+            --deloitte-light-grey: #F4F4F4;
+            --background: #FAFBFC;
+            --surface: #FFFFFF;
+            --border-light: #E8EAED;
+            --text-primary: #202124;
+            --text-secondary: #5F6368;
+            --shadow-medium: 0 4px 12px rgba(60, 64, 67, 0.15);
+            --radius: 8px;
+            --radius-large: 12px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--background);
+            color: var(--text-primary);
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            background: var(--surface);
+            padding: 48px 32px;
+            border-radius: var(--radius-large);
+            box-shadow: var(--shadow-medium);
+            border: 1px solid var(--border-light);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--deloitte-green) 0%, var(--deloitte-blue) 100%);
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 12px;
+            color: var(--text-primary);
+        }
+
+        .controls {
+            background: var(--surface);
+            padding: 24px;
+            border-radius: var(--radius-large);
+            margin-bottom: 32px;
+            box-shadow: var(--shadow-medium);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .download-btn {
+            background: linear-gradient(135deg, var(--deloitte-green) 0%, #9BC53D 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 50px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .download-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .notes-grid {
+            display: grid;
+            gap: 24px;
+        }
+
+        .turn-section {
+            background: var(--surface);
+            border-radius: var(--radius-large);
+            box-shadow: var(--shadow-medium);
+            overflow: hidden;
+        }
+
+        .turn-header {
+            background: linear-gradient(135deg, var(--deloitte-blue) 0%, var(--deloitte-green) 100%);
+            color: white;
+            padding: 24px;
+        }
+
+        .turn-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .turn-prompt {
+            opacity: 0.9;
+            font-size: 0.9rem;
+        }
+
+        .notes-content {
+            padding: 24px;
+        }
+
+        .note-item {
+            background: var(--deloitte-light-grey);
+            padding: 20px;
+            border-radius: var(--radius);
+            margin-bottom: 16px;
+            border-left: 4px solid var(--deloitte-green);
+        }
+
+        .note-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .winning-model {
+            background: var(--deloitte-green);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-weight: 600;
+        }
+
+        .note-text {
+            color: var(--text-primary);
+            line-height: 1.6;
+            font-style: italic;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 64px;
+            color: var(--text-secondary);
+        }
+
+        .no-notes {
+            text-align: center;
+            padding: 64px;
+            color: var(--text-secondary);
+            background: var(--surface);
+            border-radius: var(--radius-large);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>📝 Notes Dashboard</h1>
+            <p>View and download user annotations from model voting sessions</p>
+        </header>
+
+        <div class="controls">
+            <div>
+                <span id="totalNotes">0</span> notes collected from <span id="totalVoters">0</span> voters
+            </div>
+            <button class="download-btn" onclick="downloadNotesCSV()">
+                📥 Download CSV
+            </button>
+        </div>
+
+        <div id="loading" class="loading">
+            Loading notes data...
+        </div>
+
+        <div id="notesContainer" class="notes-grid" style="display: none;">
+        </div>
+
+        <div id="noNotes" class="no-notes" style="display: none;">
+            <h3>No Notes Yet</h3>
+            <p>Notes will appear here as users submit votes with annotations.</p>
+        </div>
+    </div>
+
+    <script>
+        // Supabase configuration
+        const SUPABASE_URL = 'https://tmkobgbqrbaascebzbny.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRta29iZ2JxcmJhYXNjZWJ6Ym55Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUyMjg3NTQsImV4cCI6MjA4MDgwNDc1NH0.YYa6MZbpspu3q27rTGZ2RZvJnhm0JIHOiih8IWDieFU';
+
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        let notesData = [];
+
+        // Load notes on page load
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadNotes();
+        });
+
+        async function loadNotes() {
+            try {
+                // Get all votes with notes using the vote_results view
+                const { data: votes, error } = await supabase
+                    .from('vote_results')
+                    .select('*')
+                    .not('vote_count', 'eq', 0)
+                    .order('conversation_title, turn_number');
+
+                if (error) throw error;
+
+                // Filter only votes that have actual notes
+                // We need to get the actual votes with notes separately
+                const { data: votesWithNotes, error: notesError } = await supabase
+                    .from('votes')
+                    .select(`
+                        id,
+                        notes,
+                        position,
+                        voted_at,
+                        voter_session,
+                        turn_id
+                    `)
+                    .not('notes', 'is', null)
+                    .neq('notes', '');
+
+                if (notesError) throw notesError;
+
+                // Get turn and conversation data for these votes
+                const enrichedVotes = [];
+                for (const vote of votesWithNotes) {
+                    const { data: turnData, error: turnError } = await supabase
+                        .from('voting_interface')
+                        .select('*')
+                        .eq('turn_id', vote.turn_id)
+                        .eq('position', vote.position)
+                        .single();
+
+                    if (!turnError && turnData) {
+                        enrichedVotes.push({
+                            ...vote,
+                            turn_number: turnData.turn_number,
+                            user_prompt: turnData.user_prompt,
+                            conversation_title: turnData.conversation_title,
+                            // Get model name from vote_results
+                            model_name: votes.find(v =>
+                                v.conversation_title === turnData.conversation_title &&
+                                v.turn_number === turnData.turn_number &&
+                                v.position === vote.position
+                            )?.model_name || 'Unknown Model'
+                        });
+                    }
+                }
+
+                notesData = enrichedVotes;
+                displayNotes(enrichedVotes);
+                updateStats(enrichedVotes);
+
+            } catch (error) {
+                console.error('Error loading notes:', error);
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('noData').style.display = 'block';
+            }
+        }
+
+        function displayNotes(votes) {
+            document.getElementById('loading').style.display = 'none';
+
+            if (!votes || votes.length === 0) {
+                document.getElementById('noNotes').style.display = 'block';
+                return;
+            }
+
+            // Group notes by turn
+            const notesByTurn = {};
+            votes.forEach(vote => {
+                const turnKey = `${vote.conversation_title} - Turn ${vote.turn_number}`;
+                if (!notesByTurn[turnKey]) {
+                    notesByTurn[turnKey] = {
+                        title: vote.conversation_title,
+                        turnNumber: vote.turn_number,
+                        prompt: vote.user_prompt,
+                        notes: []
+                    };
+                }
+                notesByTurn[turnKey].notes.push({
+                    text: vote.notes,
+                    model: vote.model_name,
+                    position: vote.position,
+                    votedAt: vote.voted_at,
+                    session: vote.voter_session
+                });
+            });
+
+            // Render notes by turn
+            const container = document.getElementById('notesContainer');
+            container.innerHTML = '';
+
+            Object.values(notesByTurn).forEach(turn => {
+                const turnElement = document.createElement('div');
+                turnElement.className = 'turn-section';
+
+                const notesHtml = turn.notes.map(note => `
+                    <div class="note-item">
+                        <div class="note-meta">
+                            <span>Voted for: <strong>Position ${note.position}</strong></span>
+                            <span class="winning-model">${getModelDisplayName(note.model)}</span>
+                        </div>
+                        <div class="note-text">"${note.text}"</div>
+                    </div>
+                `).join('');
+
+                turnElement.innerHTML = `
+                    <div class="turn-header">
+                        <div class="turn-title">${turn.title} - Turn ${turn.turnNumber}</div>
+                        <div class="turn-prompt">${turn.prompt.substring(0, 150)}...</div>
+                    </div>
+                    <div class="notes-content">
+                        ${notesHtml}
+                    </div>
+                `;
+
+                container.appendChild(turnElement);
+            });
+
+            container.style.display = 'grid';
+        }
+
+        function updateStats(votes) {
+            const uniqueVoters = new Set(votes.map(v => v.voter_session)).size;
+            document.getElementById('totalNotes').textContent = votes.length;
+            document.getElementById('totalVoters').textContent = uniqueVoters;
+        }
+
+        function getModelDisplayName(modelName) {
+            const names = {
+                'google/gemini-2.5-pro': 'Gemini 2.5 Pro',
+                'anthropic/claude-sonnet-4.5': 'Claude Sonnet 4.5',
+                'openai/gpt-4.1': 'GPT-4.1',
+                'openai/gpt-5': 'GPT-5'
+            };
+            return names[modelName] || modelName;
+        }
+
+        function downloadNotesCSV() {
+            if (notesData.length === 0) {
+                alert('No notes data to download');
+                return;
+            }
+
+            // Create CSV content
+            const headers = ['Conversation', 'Turn', 'User Prompt', 'Chosen Model', 'Position', 'Notes', 'Voted At', 'Voter Session'];
+
+            const csvRows = [
+                headers.join(','),
+                ...notesData.map(vote => [
+                    `"${vote.conversation_title}"`,
+                    vote.turn_number,
+                    `"${vote.user_prompt.replace(/"/g, '""')}"`,
+                    `"${getModelDisplayName(vote.model_name)}"`,
+                    vote.position,
+                    `"${vote.notes.replace(/"/g, '""')}"`,
+                    new Date(vote.voted_at).toLocaleString(),
+                    vote.voter_session
+                ].join(','))
+            ];
+
+            // Download CSV
+            const csvContent = csvRows.join('\n');
+            const blob = new Blob([csvContent], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `model-voting-notes-${new Date().toISOString().split('T')[0]}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>
