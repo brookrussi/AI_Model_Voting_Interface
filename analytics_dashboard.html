@@ -121,10 +121,10 @@
             letter-spacing: 0.5px;
         }
 
-        .gemini { color: #4285f4; }
-        .claude { color: #ff6b35; }
-        .gpt4 { color: #10a37f; }
-        .gpt5 { color: #6c5ce7; }
+        .gemini { color: #2563eb; }
+        .claude { color: #dc2626; }
+        .gpt4 { color: #059669; }
+        .gpt5 { color: #eab308; }
 
         .charts-grid {
             display: grid;
@@ -311,11 +311,9 @@
                         <thead>
                             <tr>
                                 <th>Model</th>
-                                <th>Total Votes</th>
-                                <th>Turns Won</th>
-                                <th>Total Turns</th>
+                                <th>Votes Received</th>
+                                <th>Conversations Won</th>
                                 <th>Win Rate</th>
-                                <th>Avg Votes/Turn</th>
                             </tr>
                         </thead>
                         <tbody id="resultsTableBody">
@@ -340,12 +338,12 @@
         // Initialize Supabase client
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        // Model colors and names
+        // Model colors - Using color theory for maximum contrast
         const MODEL_CONFIG = {
-            'google/gemini-2.5-pro': { name: 'Gemini 2.5 Pro', color: '#4285f4', class: 'gemini' },
-            'anthropic/claude-sonnet-4.5': { name: 'Claude Sonnet 4.5', color: '#ff6b35', class: 'claude' },
-            'openai/gpt-4.1': { name: 'GPT-4.1', color: '#10a37f', class: 'gpt4' },
-            'openai/gpt-5': { name: 'GPT-5', color: '#6c5ce7', class: 'gpt5' }
+            'google/gemini-2.5-pro': { name: 'Gemini 2.5 Pro', color: '#2563eb', class: 'gemini' }, // Blue
+            'anthropic/claude-sonnet-4.5': { name: 'Claude Sonnet 4.5', color: '#dc2626', class: 'claude' }, // Red
+            'openai/gpt-4.1': { name: 'GPT-4.1', color: '#059669', class: 'gpt4' }, // Green
+            'openai/gpt-5': { name: 'GPT-5', color: '#eab308', class: 'gpt5' } // Yellow
         };
 
         // Chart instances
@@ -392,42 +390,104 @@
                 const conversationId = document.getElementById('conversationSelect').value;
                 const dateRange = document.getElementById('dateRange').value;
 
-                // Build query filters
-                let query = supabase.from('vote_results').select('*');
+                // Get vote data with model information using the vote_results view
+                let { data: voteResults, error: voteError } = await supabase
+                    .from('vote_results')
+                    .select('*');
+
+                if (voteError) throw voteError;
+
+                // Get timestamp data from votes table
+                let { data: voteTimestamps, error: timestampError } = await supabase
+                    .from('votes')
+                    .select('turn_id, position, voted_at, voter_session');
+
+                if (timestampError) throw timestampError;
+
+                // Create a map for quick timestamp lookup
+                const timestampMap = {};
+                voteTimestamps.forEach(vote => {
+                    const key = `${vote.turn_id}-${vote.position}`;
+                    if (!timestampMap[key]) {
+                        timestampMap[key] = [];
+                    }
+                    timestampMap[key].push(vote);
+                });
+
+                // We need to get turn IDs to match with timestamps
+                // The vote_results view doesn't include turn_id, so let's get it from turns table
+                let { data: turns, error: turnsError } = await supabase
+                    .from('turns')
+                    .select('id, turn_number, conversation_id, conversations!inner(title)');
+
+                if (turnsError) throw turnsError;
+
+                // Create turn lookup map
+                const turnLookup = {};
+                turns.forEach(turn => {
+                    const key = `${turn.conversations.title}-${turn.turn_number}`;
+                    turnLookup[key] = turn.id;
+                });
+
+                // Enrich vote results with timestamps
+                const enrichedResults = [];
+                voteResults.forEach(result => {
+                    if (result.vote_count > 0) {
+                        // Get the turn_id for this result using the lookup
+                        const turnKey = `${result.conversation_title}-${result.turn_number}`;
+                        const turnId = turnLookup[turnKey];
+
+                        if (turnId) {
+                            const timestampKey = `${turnId}-${result.position}`;
+                            const timestamps = timestampMap[timestampKey] || [];
+
+                            timestamps.forEach(timestamp => {
+                                enrichedResults.push({
+                                    ...result,
+                                    voted_at: timestamp.voted_at,
+                                    voter_session: timestamp.voter_session
+                                });
+                            });
+                        }
+                    }
+                });
+
+                // Apply filters
+                let filteredResults = enrichedResults;
 
                 if (conversationId) {
-                    // We'll need to join with conversations table for this filter
-                    query = supabase
-                        .from('vote_results')
-                        .select(`
-                            *,
-                            turns!inner(conversation_id)
-                        `)
-                        .eq('turns.conversation_id', conversationId);
+                    // We need to get conversation data to filter by conversation ID
+                    const { data: conversations, error: convError } = await supabase
+                        .from('conversations')
+                        .select('id, title');
+
+                    if (!convError) {
+                        const targetConversation = conversations.find(c => c.id === conversationId);
+                        if (targetConversation) {
+                            filteredResults = filteredResults.filter(r => r.conversation_title === targetConversation.title);
+                        }
+                    }
                 }
 
                 if (dateRange !== 'all') {
                     const daysAgo = new Date();
                     daysAgo.setDate(daysAgo.getDate() - parseInt(dateRange));
-                    query = query.gte('voted_at', daysAgo.toISOString());
+                    filteredResults = filteredResults.filter(r => new Date(r.voted_at) >= daysAgo);
                 }
 
-                const { data: results, error } = await query;
-
-                if (error) throw error;
-
-                if (!results || results.length === 0) {
+                if (!filteredResults || filteredResults.length === 0) {
                     showNoData();
                     return;
                 }
 
                 // Process and display results
-                const analytics = processAnalyticsData(results);
+                const analytics = processAnalyticsData(filteredResults);
                 displayAnalytics(analytics);
                 hideLoading();
 
             } catch (error) {
                 showError('Failed to load analytics: ' + error.message);
+                console.error('Analytics error:', error);
             }
         }
 
@@ -439,7 +499,8 @@
                 totalConversations: new Set(),
                 modelStats: {},
                 timelineData: {},
-                conversationStats: {}
+                conversationStats: {},
+                turnResults: {} // Track results by turn for win calculation
             };
 
             // Initialize model stats
@@ -451,24 +512,52 @@
                 };
             });
 
-            // Process each result
+            // First pass: collect all data and group by turn
+            // The issue: we're getting individual vote records, but we should be using the vote_count from vote_results
+            const turnVoteCounts = {};
+
             results.forEach(result => {
-                analytics.totalVotes += result.vote_count;
-                analytics.totalTurns.add(result.turn_number);
-                analytics.totalConversations.add(result.conversation_title);
-
                 const model = result.model_name;
-                if (analytics.modelStats[model]) {
-                    analytics.modelStats[model].totalVotes += result.vote_count;
-                    analytics.modelStats[model].turnsParticipated.add(result.turn_number);
+                const turnKey = `${result.conversation_title}-${result.turn_number}`;
 
-                    // Track wins (highest vote count for this turn)
-                    // Note: This is a simplified approach - in reality we'd need to compare all models for each turn
-                    if (result.vote_count > 0) {
-                        // For now, count any turn with votes as participation
-                        // A more sophisticated approach would determine actual winners per turn
+                // Use the actual vote count from the vote_results view, not individual records
+                if (!turnVoteCounts[turnKey]) {
+                    turnVoteCounts[turnKey] = {};
+                    analytics.totalTurns.add(turnKey);
+                }
+                if (!turnVoteCounts[turnKey][model]) {
+                    turnVoteCounts[turnKey][model] = 0;
+                }
+
+                // This should only run once per model per turn, but we're getting multiple records
+                // Let's track unique combinations
+                const recordKey = `${turnKey}-${model}`;
+                if (!analytics.processedRecords) analytics.processedRecords = new Set();
+
+                if (!analytics.processedRecords.has(recordKey)) {
+                    analytics.processedRecords.add(recordKey);
+
+                    // Get the actual vote count from the original vote_results data
+                    const originalResult = result;
+                    const voteCount = originalResult.vote_count || 1;
+
+                    turnVoteCounts[turnKey][model] = voteCount;
+                    analytics.totalVotes += voteCount;
+                    analytics.totalConversations.add(result.conversation_title);
+
+                    // Track model participation
+                    if (analytics.modelStats[model]) {
+                        analytics.modelStats[model].totalVotes += voteCount;
+                        analytics.modelStats[model].turnsParticipated.add(turnKey);
                     }
                 }
+            });
+
+            analytics.turnResults = turnVoteCounts;
+
+            // Process timeline and conversation data separately
+            results.forEach(result => {
+                const model = result.model_name;
 
                 // Timeline data (group by date)
                 if (result.voted_at) {
@@ -476,7 +565,7 @@
                     if (!analytics.timelineData[date]) {
                         analytics.timelineData[date] = 0;
                     }
-                    analytics.timelineData[date] += result.vote_count;
+                    analytics.timelineData[date] += 1;
                 }
 
                 // Conversation stats
@@ -486,7 +575,23 @@
                 if (!analytics.conversationStats[result.conversation_title][model]) {
                     analytics.conversationStats[result.conversation_title][model] = 0;
                 }
-                analytics.conversationStats[result.conversation_title][model] += result.vote_count;
+                analytics.conversationStats[result.conversation_title][model] += 1;
+            });
+
+            // Second pass: determine winners for each turn
+            Object.entries(analytics.turnResults).forEach(([turnKey, turnData]) => {
+                const models = Object.keys(turnData);
+                if (models.length > 0) {
+                    // Find the model(s) with the highest vote count
+                    const maxVotes = Math.max(...Object.values(turnData));
+                    const winners = models.filter(model => turnData[model] === maxVotes);
+
+                    // Award wins (if there's a clear winner)
+                    if (winners.length === 1 && analytics.modelStats[winners[0]]) {
+                        analytics.modelStats[winners[0]].turnsWon += 1;
+                    }
+                    // In case of ties, no one gets the win
+                }
             });
 
             // Convert sets to counts
@@ -512,12 +617,12 @@
 
             // Create charts
             createOverallChart(analytics.modelStats);
-            createWinRateChart(analytics.modelStats);
+            createWinRateChart(analytics.modelStats, analytics.totalTurns);
             createTimelineChart(analytics.timelineData);
             createConversationChart(analytics.conversationStats);
 
             // Update detailed table
-            updateResultsTable(analytics.modelStats);
+            updateResultsTable(analytics.modelStats, analytics.totalTurns);
 
             // Show analytics content
             document.getElementById('analyticsContent').style.display = 'block';
@@ -557,7 +662,7 @@
         }
 
         // Create win rate chart
-        function createWinRateChart(modelStats) {
+        function createWinRateChart(modelStats, totalTurns) {
             const ctx = document.getElementById('winRateChart').getContext('2d');
 
             if (charts.winRate) charts.winRate.destroy();
@@ -565,7 +670,8 @@
             const models = Object.keys(modelStats);
             const winRates = models.map(model => {
                 const stats = modelStats[model];
-                return stats.turnsParticipated > 0 ? (stats.turnsWon / stats.turnsParticipated * 100) : 0;
+                // Use total turns in conversation, not just turns participated
+                return totalTurns > 0 ? (stats.turnsWon / totalTurns * 100) : 0;
             });
             const colors = models.map(model => MODEL_CONFIG[model].color);
             const labels = models.map(model => MODEL_CONFIG[model].name);
@@ -673,23 +779,21 @@
         }
 
         // Update detailed results table
-        function updateResultsTable(modelStats) {
+        function updateResultsTable(modelStats, totalTurns) {
             const tbody = document.getElementById('resultsTableBody');
             tbody.innerHTML = '';
 
             Object.entries(modelStats).forEach(([model, stats]) => {
                 const config = MODEL_CONFIG[model];
-                const winRate = stats.turnsParticipated > 0 ? (stats.turnsWon / stats.turnsParticipated * 100).toFixed(1) : 0;
-                const avgVotes = stats.turnsParticipated > 0 ? (stats.totalVotes / stats.turnsParticipated).toFixed(1) : 0;
+                // Fix: Use total turns for win rate, not just participated turns
+                const winRate = totalTurns > 0 ? (stats.turnsWon / totalTurns * 100).toFixed(1) : 0;
 
                 const row = document.createElement('tr');
                 row.innerHTML = `
                     <td><span class="model-name ${config.class}">${config.name}</span></td>
                     <td>${stats.totalVotes.toLocaleString()}</td>
                     <td>${stats.turnsWon}</td>
-                    <td>${stats.turnsParticipated}</td>
                     <td><span class="win-rate">${winRate}%</span></td>
-                    <td>${avgVotes}</td>
                 `;
                 tbody.appendChild(row);
             });

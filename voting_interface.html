@@ -224,21 +224,23 @@
         .notes-section {
             padding: 24px 32px;
             border-top: 1px solid var(--border-light);
-            background: linear-gradient(135deg, var(--surface-hover) 0%, rgba(248, 249, 250, 0.5) 100%);
+            background: linear-gradient(135deg, rgba(134, 188, 37, 0.08) 0%, rgba(134, 188, 37, 0.04) 100%);
+            border-left: 4px solid var(--deloitte-green);
         }
 
         .notes-textarea {
             width: 100%;
             min-height: 100px;
             padding: 16px;
-            border: 2px solid var(--border-light);
+            border: 2px solid rgba(134, 188, 37, 0.3);
             border-radius: var(--radius);
             font-size: 0.9375rem;
             font-family: inherit;
             resize: vertical;
-            background: var(--surface);
+            background: rgba(255, 255, 255, 0.9);
             color: var(--text-primary);
             transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(134, 188, 37, 0.1);
         }
 
         .notes-textarea::placeholder {
@@ -249,13 +251,14 @@
         .notes-textarea:focus {
             outline: none;
             border-color: var(--deloitte-green);
-            box-shadow: 0 0 0 4px rgba(134, 188, 37, 0.1);
+            box-shadow: 0 0 0 4px rgba(134, 188, 37, 0.2), 0 2px 12px rgba(134, 188, 37, 0.15);
         }
 
         .notes-textarea:disabled {
-            background: var(--deloitte-light-grey);
+            background: rgba(244, 244, 244, 0.8);
             color: var(--text-secondary);
             cursor: not-allowed;
+            border-color: rgba(134, 188, 37, 0.2);
         }
 
         .voting-controls {
@@ -368,6 +371,66 @@
             color: #718096;
         }
 
+        .final-submit-section {
+            background: var(--surface);
+            margin-top: 48px;
+            border-radius: var(--radius-large);
+            box-shadow: var(--shadow-medium);
+            border: 1px solid var(--border-light);
+            overflow: hidden;
+        }
+
+        .final-submit-content {
+            padding: 48px 32px;
+            text-align: center;
+            background: linear-gradient(135deg, rgba(134, 188, 37, 0.05) 0%, rgba(134, 188, 37, 0.02) 100%);
+        }
+
+        .final-submit-content h3 {
+            color: var(--text-primary);
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+
+        .final-submit-content p {
+            color: var(--text-secondary);
+            font-size: 1rem;
+            margin-bottom: 32px;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .final-submit-button {
+            background: linear-gradient(135deg, var(--deloitte-green) 0%, #9BC53D 100%);
+            color: white;
+            border: none;
+            padding: 20px 48px;
+            font-size: 1.125rem;
+            font-weight: 600;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: var(--shadow-medium);
+            letter-spacing: 0.025em;
+            min-width: 200px;
+        }
+
+        .final-submit-button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(60, 64, 67, 0.2);
+            background: linear-gradient(135deg, #7BA823 0%, var(--deloitte-green) 100%);
+        }
+
+        .final-submit-button:disabled {
+            background: var(--deloitte-grey);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: var(--shadow-light);
+            opacity: 0.7;
+        }
+
         @media (max-width: 768px) {
             .responses-grid {
                 grid-template-columns: 1fr;
@@ -375,6 +438,15 @@
 
             .container {
                 padding: 10px;
+            }
+
+            .final-submit-content {
+                padding: 32px 24px;
+            }
+
+            .final-submit-button {
+                padding: 16px 32px;
+                font-size: 1rem;
             }
         }
     </style>
@@ -414,6 +486,18 @@
         </div>
 
         <div id="votingArea" style="display: none;"></div>
+
+        <!-- Final submit button that appears after all turns -->
+        <div id="finalSubmitSection" class="final-submit-section" style="display: none;">
+            <div class="final-submit-content">
+                <h3>Ready to Submit All Votes?</h3>
+                <p>Please make sure you've voted on all turns and left any notes you'd like to share.</p>
+                <button id="finalSubmitBtn" class="final-submit-button" onclick="submitAllVotes()" disabled>
+                    Submit All Votes
+                </button>
+                <div id="finalSubmitMessage"></div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -526,6 +610,8 @@
             });
 
             document.getElementById('stats').style.display = 'block';
+            document.getElementById('finalSubmitSection').style.display = 'block';
+            updateFinalSubmitButton();
         }
 
         // Create HTML element for a turn
@@ -546,7 +632,6 @@
                         <div class="response-card" data-position="${response.position}" onclick="selectResponse('${turn.turn_id}', '${response.position}')">
                             <div class="response-header">
                                 <div class="response-label">Response ${response.position}</div>
-                                <div class="vote-count">${response.current_votes} votes</div>
                             </div>
                             <div class="response-text">${formatMarkdown(response.text)}</div>
                         </div>
@@ -560,21 +645,22 @@
                         rows="4"
                         ${hasVoted ? 'disabled style="opacity: 0.6;"' : ''}></textarea>
                 </div>
-                <div class="voting-controls">
-                    <button class="vote-button" id="vote-btn-${turn.turn_id}"
-                            onclick="submitVote('${turn.turn_id}')"
-                            ${hasVoted ? 'disabled' : ''}>
-                        ${hasVoted ? 'Already Voted' : 'Submit Vote'}
-                    </button>
-                    <div id="message-${turn.turn_id}"></div>
-                </div>
+                <div id="message-${turn.turn_id}"></div>
             `;
 
             return turnDiv;
         }
 
+        // Global object to track user selections for each turn
+        let userSelections = {};
+
         // Select a response (highlight it)
         function selectResponse(turnId, position) {
+            // Don't allow selection if already voted on this turn
+            if (userVotes.has(turnId)) {
+                return;
+            }
+
             // Remove previous selections for this turn
             const turnElement = document.getElementById(`turn-${turnId}`);
             turnElement.querySelectorAll('.response-card').forEach(card => {
@@ -585,12 +671,12 @@
             const selectedCard = turnElement.querySelector(`[data-position="${position}"]`);
             selectedCard.classList.add('selected');
 
-            // Enable vote button
-            const voteButton = document.getElementById(`vote-btn-${turnId}`);
-            if (!userVotes.has(turnId)) {
-                voteButton.disabled = false;
-                voteButton.dataset.selectedPosition = position;
-            }
+            // Store the selection
+            userSelections[turnId] = position;
+
+            // Update final submit button state and progress
+            updateFinalSubmitButton();
+            updateStats();
         }
 
         // Load existing votes for the current session
@@ -634,70 +720,124 @@
             }
         }
 
-        // Submit vote for a turn
-        async function submitVote(turnId) {
-            const voteButton = document.getElementById(`vote-btn-${turnId}`);
-            const selectedPosition = voteButton.dataset.selectedPosition;
+        // Check if all turns have been selected
+        function updateFinalSubmitButton() {
+            const finalSubmitBtn = document.getElementById('finalSubmitBtn');
+            if (!finalSubmitBtn) return;
 
-            if (!selectedPosition) {
-                showTurnMessage(turnId, 'Please select a response first.', 'error');
+            // Count selected turns (not yet voted on)
+            const selectedTurns = Object.keys(userSelections).length;
+            const totalUnvotedTurns = currentTurns.length - userVotes.size;
+
+            // Enable button only if user has made selections for all unvoted turns
+            const allTurnsSelected = selectedTurns >= totalUnvotedTurns && totalUnvotedTurns > 0;
+
+            finalSubmitBtn.disabled = !allTurnsSelected;
+
+            if (userVotes.size === currentTurns.length) {
+                // All turns voted, hide the button
+                document.getElementById('finalSubmitSection').style.display = 'none';
+            } else if (allTurnsSelected) {
+                finalSubmitBtn.textContent = `Submit ${selectedTurns} Vote${selectedTurns > 1 ? 's' : ''}`;
+            } else {
+                finalSubmitBtn.textContent = 'Select responses for all turns';
+            }
+        }
+
+        // Submit all pending votes
+        async function submitAllVotes() {
+            const finalSubmitBtn = document.getElementById('finalSubmitBtn');
+            const messageDiv = document.getElementById('finalSubmitMessage');
+
+            finalSubmitBtn.disabled = true;
+            finalSubmitBtn.textContent = 'Submitting...';
+            messageDiv.innerHTML = '';
+
+            const votesToSubmit = [];
+            const errors = [];
+
+            // Prepare all votes for submission
+            for (const [turnId, position] of Object.entries(userSelections)) {
+                // Skip if already voted on this turn
+                if (userVotes.has(turnId)) continue;
+
+                // Check if user already voted on this turn (double-check)
+                const existingVote = await checkExistingVote(turnId);
+                if (existingVote) {
+                    errors.push(`You already voted on turn ${turnId}`);
+                    continue;
+                }
+
+                // Get notes for this turn
+                const notesTextarea = document.getElementById(`notes-${turnId}`);
+                const notes = notesTextarea ? notesTextarea.value.trim() : '';
+
+                votesToSubmit.push({
+                    turn_id: turnId,
+                    position: position,
+                    voter_session: voterSession,
+                    notes: notes
+                });
+            }
+
+            if (errors.length > 0) {
+                messageDiv.innerHTML = `<div class="error-message">${errors.join('<br>')}</div>`;
+                finalSubmitBtn.disabled = false;
+                finalSubmitBtn.textContent = 'Submit All Votes';
                 return;
             }
 
-            // Check if user already voted on this turn
-            const existingVote = await checkExistingVote(turnId);
-            if (existingVote) {
-                showTurnMessage(turnId, `You already voted for position ${existingVote.position} on this turn.`, 'error');
+            if (votesToSubmit.length === 0) {
+                messageDiv.innerHTML = `<div class="error-message">No new votes to submit.</div>`;
+                finalSubmitBtn.disabled = false;
+                finalSubmitBtn.textContent = 'Submit All Votes';
                 return;
             }
 
             try {
-                voteButton.disabled = true;
-                voteButton.textContent = 'Submitting...';
-
-                // Get notes from the single notes textarea for this turn
-                const notesTextarea = document.getElementById(`notes-${turnId}`);
-                const notes = notesTextarea ? notesTextarea.value.trim() : '';
-
+                // Submit all votes in a batch
                 const { error } = await supabase
                     .from('votes')
-                    .insert([{
-                        turn_id: turnId,
-                        position: selectedPosition,
-                        voter_session: voterSession,
-                        notes: notes
-                    }]);
+                    .insert(votesToSubmit);
 
                 if (error) {
-                    // Handle duplicate key constraint error specifically
                     if (error.code === '23505' || error.message.includes('unique_vote_per_session_per_turn')) {
-                        showTurnMessage(turnId, 'You have already voted on this turn.', 'error');
-                        voteButton.disabled = false;
-                        voteButton.textContent = 'Submit Vote';
-                        return;
+                        throw new Error('Some votes were already submitted. Please refresh the page.');
                     }
                     throw error;
                 }
 
-                // Mark as voted
-                userVotes.add(turnId);
-                voteButton.textContent = 'Already Voted';
-                showTurnMessage(turnId, '✅ Vote and notes recorded successfully!', 'success');
+                // Mark all submitted votes as completed
+                votesToSubmit.forEach(vote => {
+                    userVotes.add(vote.turn_id);
 
-                // Disable the notes textarea for this turn
-                if (notesTextarea) {
-                    notesTextarea.disabled = true;
-                    notesTextarea.style.opacity = '0.6';
-                }
+                    // Disable notes textarea
+                    const notesTextarea = document.getElementById(`notes-${vote.turn_id}`);
+                    if (notesTextarea) {
+                        notesTextarea.disabled = true;
+                        notesTextarea.style.opacity = '0.6';
+                    }
 
-                // Update vote counts
-                await refreshVoteCounts(turnId);
+                    // Show success message for each turn
+                    showTurnMessage(vote.turn_id, '✅ Vote recorded!', 'success');
+                });
+
+                // Clear selections
+                userSelections = {};
+
+                // Update UI
+                messageDiv.innerHTML = `<div class="success-message">✅ Successfully submitted ${votesToSubmit.length} vote${votesToSubmit.length > 1 ? 's' : ''}!</div>`;
                 updateStats();
+                updateFinalSubmitButton();
+
+                // Vote counts are hidden to prevent bias
+                // No need to refresh counts since they're not displayed
 
             } catch (error) {
-                voteButton.disabled = false;
-                voteButton.textContent = 'Submit Vote';
-                showTurnMessage(turnId, 'Failed to submit vote: ' + error.message, 'error');
+                messageDiv.innerHTML = `<div class="error-message">Failed to submit votes: ${error.message}</div>`;
+                finalSubmitBtn.disabled = false;
+                finalSubmitBtn.textContent = 'Submit All Votes';
+                console.error('Error submitting votes:', error);
             }
         }
 
@@ -729,12 +869,18 @@
         function updateStats() {
             const totalTurns = currentTurns.length;
             const votedTurns = userVotes.size;
-            const remainingTurns = totalTurns - votedTurns;
-            const progressPercent = totalTurns > 0 ? (votedTurns / totalTurns) * 100 : 0;
+
+            // Count selections that haven't been voted on yet
+            const pendingSelections = Object.keys(userSelections).filter(turnId => !userVotes.has(turnId)).length;
+
+            // Total progress includes voted turns and pending selections
+            const totalProgress = votedTurns + pendingSelections;
+            const remainingTurns = totalTurns - totalProgress;
+            const progressPercent = totalTurns > 0 ? (totalProgress / totalTurns) * 100 : 0;
 
             document.getElementById('totalTurns').textContent = totalTurns;
             document.getElementById('votedTurns').textContent = votedTurns;
-            document.getElementById('remainingTurns').textContent = remainingTurns;
+            document.getElementById('remainingTurns').textContent = Math.max(0, remainingTurns);
             document.getElementById('progressFill').style.width = `${progressPercent}%`;
         }
 
