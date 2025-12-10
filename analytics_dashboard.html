@@ -595,19 +595,47 @@
                 analytics.conversationStats[result.conversation_title][model] += 1;
             });
 
-            // Second pass: determine winners for each turn
+            // Second pass: determine conversation winners (not just turn winners)
+            const conversationWins = {};
+
+            // First, find who won each turn
+            const turnWinners = {};
             Object.entries(analytics.turnResults).forEach(([turnKey, turnData]) => {
                 const models = Object.keys(turnData);
                 if (models.length > 0) {
-                    // Find the model(s) with the highest vote count
                     const maxVotes = Math.max(...Object.values(turnData));
                     const winners = models.filter(model => turnData[model] === maxVotes);
 
-                    // Award wins (if there's a clear winner)
-                    if (winners.length === 1 && analytics.modelStats[winners[0]]) {
-                        analytics.modelStats[winners[0]].turnsWon += 1;
+                    if (winners.length === 1) {
+                        turnWinners[turnKey] = winners[0];
                     }
-                    // In case of ties, no one gets the win
+                }
+            });
+
+            // Group turns by conversation and count wins per model per conversation
+            const conversationTurnWins = {};
+            Object.entries(turnWinners).forEach(([turnKey, winner]) => {
+                // Extract conversation from turnKey (format: "conversation-title-turnNumber")
+                const parts = turnKey.split('-');
+                const conversationKey = parts.slice(0, -1).join('-'); // Everything except last part (turn number)
+
+                if (!conversationTurnWins[conversationKey]) {
+                    conversationTurnWins[conversationKey] = {};
+                }
+                if (!conversationTurnWins[conversationKey][winner]) {
+                    conversationTurnWins[conversationKey][winner] = 0;
+                }
+                conversationTurnWins[conversationKey][winner] += 1;
+            });
+
+            // Determine conversation winners (whoever won majority of turns in that conversation)
+            Object.entries(conversationTurnWins).forEach(([conversationKey, modelWins]) => {
+                const maxTurnWins = Math.max(...Object.values(modelWins));
+                const conversationWinners = Object.keys(modelWins).filter(model => modelWins[model] === maxTurnWins);
+
+                // Award conversation win if there's a clear winner (majority of turns)
+                if (conversationWinners.length === 1 && analytics.modelStats[conversationWinners[0]]) {
+                    analytics.modelStats[conversationWinners[0]].turnsWon += 1; // This now represents conversations won
                 }
             });
 
@@ -634,12 +662,12 @@
 
             // Create charts
             createOverallChart(analytics.modelStats);
-            createWinRateChart(analytics.modelStats, analytics.totalTurns);
+            createWinRateChart(analytics.modelStats, analytics.totalConversations);
             createTimelineChart(analytics.timelineData);
             createConversationChart(analytics.conversationStats);
 
             // Update detailed table
-            updateResultsTable(analytics.modelStats, analytics.totalTurns);
+            updateResultsTable(analytics.modelStats, analytics.totalConversations);
 
             // Show analytics content
             document.getElementById('analyticsContent').style.display = 'block';
@@ -679,7 +707,7 @@
         }
 
         // Create win rate chart
-        function createWinRateChart(modelStats, totalTurns) {
+        function createWinRateChart(modelStats, totalConversations) {
             const ctx = document.getElementById('winRateChart').getContext('2d');
 
             if (charts.winRate) charts.winRate.destroy();
@@ -687,8 +715,8 @@
             const models = Object.keys(modelStats);
             const winRates = models.map(model => {
                 const stats = modelStats[model];
-                // Use total turns in conversation, not just turns participated
-                return totalTurns > 0 ? (stats.turnsWon / totalTurns * 100) : 0;
+                // Use total conversations, since turnsWon now represents conversations won
+                return totalConversations > 0 ? (stats.turnsWon / totalConversations * 100) : 0;
             });
             const colors = models.map(model => MODEL_CONFIG[model].color);
             const labels = models.map(model => MODEL_CONFIG[model].name);
@@ -796,14 +824,14 @@
         }
 
         // Update detailed results table
-        function updateResultsTable(modelStats, totalTurns) {
+        function updateResultsTable(modelStats, totalConversations) {
             const tbody = document.getElementById('resultsTableBody');
             tbody.innerHTML = '';
 
             Object.entries(modelStats).forEach(([model, stats]) => {
                 const config = MODEL_CONFIG[model];
-                // Fix: Use total turns for win rate, not just participated turns
-                const winRate = totalTurns > 0 ? (stats.turnsWon / totalTurns * 100).toFixed(1) : 0;
+                // Fix: Use total conversations for win rate (turnsWon now represents conversations won)
+                const winRate = totalConversations > 0 ? (stats.turnsWon / totalConversations * 100).toFixed(1) : 0;
 
                 const row = document.createElement('tr');
                 row.innerHTML = `
