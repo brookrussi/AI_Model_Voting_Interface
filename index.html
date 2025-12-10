@@ -4,6 +4,23 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Model Response Blind Voting</title>
+    <script>
+        // Simple password protection
+        (function() {
+            const correctPassword = 'analytics2025'; // Change this password!
+            const entered = sessionStorage.getItem('analyticsAuth');
+            
+            if (entered !== correctPassword) {
+                const password = prompt('Enter password to access this page:');
+                if (password === correctPassword) {
+                    sessionStorage.setItem('analyticsAuth', password);
+                } else {
+                    alert('Incorrect password');
+                    window.location.href = 'voting_interface.html';
+                }
+            }
+        })();
+    </script>
     <style>
         * {
             margin: 0;

@@ -8,6 +8,23 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        // Simple password protection
+        (function() {
+            const correctPassword = 'analytics2025'; // Change this password!
+            const entered = sessionStorage.getItem('analyticsAuth');
+            
+            if (entered !== correctPassword) {
+                const password = prompt('Enter password to access notes dashboard:');
+                if (password === correctPassword) {
+                    sessionStorage.setItem('analyticsAuth', password);
+                } else {
+                    alert('Incorrect password');
+                    window.location.href = 'voting_interface.html';
+                }
+            }
+        })();
+    </script>
     <style>
         :root {
             --deloitte-green: #86BC25;
