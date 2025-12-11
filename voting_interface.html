@@ -6,7 +6,7 @@
     <title>Model Response Voting</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=Source+Code+Pro:wght@300;400;500;600&family=Playfair+Display:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         * {
@@ -16,36 +16,50 @@
         }
 
         :root {
-            /* Deloitte Brand Colors */
-            --deloitte-green: #86BC25;
-            --deloitte-blue: #0076A8;
-            --deloitte-grey: #62666A;
-            --deloitte-light-grey: #F4F4F4;
-            --deloitte-dark-grey: #3D4043;
+            /* Hierarchy Strategy Palette */
+            --primary-orange: #FF6B35;
+            --primary-blue: #264653;
+            --secondary-teal: #2A9D8F;
+            --neutral-gold: #E9C46A;
 
-            /* Modern UI Colors */
-            --background: #FAFBFC;
-            --surface: #FFFFFF;
-            --surface-hover: #F8F9FA;
-            --border-light: #E8EAED;
-            --border-medium: #DADCE0;
-            --text-primary: #202124;
-            --text-secondary: #5F6368;
-            --text-tertiary: #80868B;
-            --shadow-light: 0 1px 3px rgba(60, 64, 67, 0.08);
-            --shadow-medium: 0 4px 12px rgba(60, 64, 67, 0.15);
-            --radius: 8px;
-            --radius-large: 12px;
+            /* Extended Aesthetic Variables */
+            --surface-dark: #1a1f25;
+            --surface-mid: #2d3748;
+            --surface-light: #f7fafc;
+            --text-primary: #2d3748;
+            --text-secondary: #4a5568;
+            --text-accent: #e2e8f0;
+            --shadow-soft: 0 4px 20px rgba(38, 70, 83, 0.08);
+            --shadow-sharp: 0 8px 32px rgba(38, 70, 83, 0.15);
+            --gradient-neural: linear-gradient(135deg, var(--surface-dark) 0%, var(--primary-blue) 45%, var(--secondary-teal) 100%);
+            --gradient-data: radial-gradient(ellipse at top, rgba(255, 107, 53, 0.1) 0%, transparent 70%);
+            --radius: 0px;
+            --radius-large: 0px;
         }
 
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            line-height: 1.5;
+            font-family: 'Crimson Text', Georgia, serif;
+            line-height: 1.65;
             color: var(--text-primary);
-            background: linear-gradient(135deg, var(--background) 0%, #F0F2F5 100%);
+            background: var(--surface-light);
+            background-image:
+                var(--gradient-data),
+                repeating-linear-gradient(
+                    45deg,
+                    transparent,
+                    transparent 2px,
+                    rgba(42, 157, 143, 0.03) 2px,
+                    rgba(42, 157, 143, 0.03) 4px
+                );
             min-height: 100vh;
             padding: 0;
             margin: 0;
+            animation: pageReveal 0.8s ease-out;
+        }
+
+        @keyframes pageReveal {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         .container {
@@ -55,15 +69,22 @@
         }
 
         .header {
-            text-align: center;
-            margin-bottom: 40px;
-            background: var(--surface);
-            padding: 48px 32px;
-            border-radius: var(--radius-large);
-            box-shadow: var(--shadow-medium);
-            border: 1px solid var(--border-light);
             position: relative;
+            margin-bottom: 60px;
+            background: var(--gradient-neural);
+            padding: 80px 60px;
+            border-radius: 0;
+            box-shadow: var(--shadow-sharp);
             overflow: hidden;
+            color: white;
+            text-align: left;
+            clip-path: polygon(0 0, 100% 0, 95% 100%, 0 100%);
+            animation: headerSlide 1s ease-out 0.2s both;
+        }
+
+        @keyframes headerSlide {
+            from { opacity: 0; transform: translateX(-50px); }
+            to { opacity: 1; transform: translateX(0); }
         }
 
         .header::before {
@@ -72,23 +93,54 @@
             top: 0;
             left: 0;
             right: 0;
-            height: 4px;
-            background: linear-gradient(90deg, var(--deloitte-green) 0%, var(--deloitte-blue) 100%);
+            bottom: 0;
+            background:
+                radial-gradient(circle at 20% 80%, rgba(255, 107, 53, 0.2) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(233, 196, 106, 0.15) 0%, transparent 50%),
+                repeating-linear-gradient(
+                    90deg,
+                    transparent,
+                    transparent 100px,
+                    rgba(255, 255, 255, 0.05) 100px,
+                    rgba(255, 255, 255, 0.05) 101px
+                );
+        }
+
+        .header-content {
+            position: relative;
+            z-index: 2;
+            max-width: 800px;
         }
 
         .header h1 {
-            color: var(--text-primary);
-            font-size: 2.5rem;
-            font-weight: 700;
-            margin-bottom: 12px;
-            letter-spacing: -0.025em;
+            font-family: 'Playfair Display', serif;
+            font-size: clamp(2.5rem, 5vw, 4rem);
+            font-weight: 600;
+            margin-bottom: 20px;
+            letter-spacing: -0.02em;
+            line-height: 1.1;
+            animation: titleReveal 1.2s ease-out 0.4s both;
+        }
+
+        @keyframes titleReveal {
+            from { opacity: 0; transform: translateY(30px) rotateX(15deg); }
+            to { opacity: 1; transform: translateY(0) rotateX(0deg); }
         }
 
         .header p {
-            color: var(--text-secondary);
-            font-size: 1.125rem;
-            max-width: 600px;
-            margin: 0 auto;
+            font-family: 'Source Code Pro', monospace;
+            color: var(--text-accent);
+            font-size: 1.1rem;
+            font-weight: 300;
+            letter-spacing: 0.5px;
+            text-transform: lowercase;
+            opacity: 0.9;
+            animation: subtitleReveal 1.2s ease-out 0.6s both;
+        }
+
+        @keyframes subtitleReveal {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         .conversation-select {
@@ -107,21 +159,33 @@
         }
 
         .turn {
-            background: var(--surface);
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
             margin-bottom: 48px;
-            border-radius: var(--radius-large);
-            box-shadow: var(--shadow-medium);
-            border: 1px solid var(--border-light);
+            border-radius: 0;
+            box-shadow: var(--shadow-soft);
+            border: 1px solid rgba(42, 157, 143, 0.1);
             overflow: hidden;
             transition: all 0.3s ease;
+            animation: turnReveal 0.6s ease-out calc(0.8s + var(--turn-delay, 0s)) both;
+        }
+
+        .turn:nth-child(1) { --turn-delay: 0.1s; }
+        .turn:nth-child(2) { --turn-delay: 0.2s; }
+        .turn:nth-child(3) { --turn-delay: 0.3s; }
+
+        @keyframes turnReveal {
+            from { opacity: 0; transform: translateY(40px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         .turn:hover {
-            box-shadow: 0 8px 24px rgba(60, 64, 67, 0.12);
+            box-shadow: var(--shadow-sharp);
+            border-color: var(--secondary-teal);
         }
 
         .turn-header {
-            background: linear-gradient(135deg, var(--deloitte-blue) 0%, var(--deloitte-green) 100%);
+            background: var(--gradient-neural);
             color: white;
             padding: 32px;
             position: relative;
@@ -167,41 +231,61 @@
         }
 
         .response-card {
-            border: 2px solid var(--border-light);
-            border-radius: var(--radius);
+            border: 2px solid rgba(42, 157, 143, 0.2);
+            border-radius: 0;
             overflow: hidden;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             cursor: pointer;
-            background: var(--surface);
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(5px);
             position: relative;
+            animation: cardFloat 0.6s ease-out calc(1.2s + var(--card-delay, 0s)) both;
+        }
+
+        .response-card:nth-child(1) { --card-delay: 0.1s; }
+        .response-card:nth-child(2) { --card-delay: 0.2s; }
+        .response-card:nth-child(3) { --card-delay: 0.3s; }
+        .response-card:nth-child(4) { --card-delay: 0.4s; }
+
+        @keyframes cardFloat {
+            from { opacity: 0; transform: translateY(20px) scale(0.95); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
         }
 
         .response-card:hover {
-            border-color: var(--deloitte-blue);
-            transform: translateY(-4px);
-            box-shadow: var(--shadow-medium);
+            border-color: var(--secondary-teal);
+            transform: translateY(-6px);
+            box-shadow: var(--shadow-sharp);
         }
 
         .response-card.selected {
-            border-color: var(--deloitte-green);
-            background: linear-gradient(135deg, rgba(134, 188, 37, 0.05) 0%, rgba(134, 188, 37, 0.02) 100%);
-            box-shadow: 0 0 0 4px rgba(134, 188, 37, 0.1);
+            border-color: var(--primary-orange);
+            background: linear-gradient(135deg, rgba(255, 107, 53, 0.15) 0%, rgba(255, 107, 53, 0.05) 100%);
+            box-shadow: 0 0 0 4px rgba(255, 107, 53, 0.2);
+            transform: translateY(-6px) scale(1.02);
+        }
+
+        .response-card.selected:hover {
+            border-color: var(--primary-orange);
+            box-shadow: 0 0 0 4px rgba(255, 107, 53, 0.3), var(--shadow-sharp);
         }
 
         .response-header {
-            background: var(--deloitte-light-grey);
+            background: linear-gradient(135deg, var(--surface-light) 0%, rgba(42, 157, 143, 0.05) 100%);
             padding: 16px 20px;
-            border-bottom: 1px solid var(--border-light);
+            border-bottom: 1px solid rgba(42, 157, 143, 0.1);
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
 
         .response-label {
+            font-family: 'Source Code Pro', monospace;
             font-weight: 600;
-            font-size: 1.125rem;
+            font-size: 1rem;
             color: var(--text-primary);
-            letter-spacing: -0.025em;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
         }
 
         .vote-count {
@@ -403,32 +487,35 @@
         }
 
         .final-submit-button {
-            background: linear-gradient(135deg, var(--deloitte-green) 0%, #9BC53D 100%);
+            background: linear-gradient(135deg, var(--primary-orange) 0%, rgba(255, 107, 53, 0.8) 100%);
             color: white;
             border: none;
             padding: 20px 48px;
-            font-size: 1.125rem;
+            font-family: 'Source Code Pro', monospace;
+            font-size: 1rem;
             font-weight: 600;
-            border-radius: 50px;
+            border-radius: 0;
             cursor: pointer;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: var(--shadow-medium);
-            letter-spacing: 0.025em;
+            box-shadow: var(--shadow-soft);
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
             min-width: 200px;
+            position: relative;
+            overflow: hidden;
         }
 
         .final-submit-button:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 24px rgba(60, 64, 67, 0.2);
-            background: linear-gradient(135deg, #7BA823 0%, var(--deloitte-green) 100%);
+            transform: translateY(-4px);
+            box-shadow: 0 8px 32px rgba(255, 107, 53, 0.4);
         }
 
         .final-submit-button:disabled {
-            background: var(--deloitte-grey);
+            background: var(--text-secondary);
             cursor: not-allowed;
             transform: none;
-            box-shadow: var(--shadow-light);
-            opacity: 0.7;
+            box-shadow: var(--shadow-soft);
+            opacity: 0.6;
         }
 
         @media (max-width: 768px) {
@@ -454,8 +541,10 @@
 <body>
     <div class="container">
         <header class="header">
-            <h1>🤖 Compare AI Model Performance</h1>
-            <p>Help evaluate which AI models give the best responses by voting on real conversations. Model names are hidden so you judge purely on quality, not brand recognition.</p>
+            <div class="header-content">
+                <h1>Model Response Evaluation</h1>
+                <p>blind testing • quality assessment • unbiased comparison</p>
+            </div>
         </header>
 
         <!-- Conversation auto-loads - no user selection needed -->

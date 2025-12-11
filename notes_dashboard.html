@@ -6,7 +6,7 @@
     <title>Notes Dashboard - Model Voting Results</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=Source+Code+Pro:wght@300;400;500;600&family=Playfair+Display:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
         // Simple password protection
@@ -27,18 +27,23 @@
     </script>
     <style>
         :root {
-            --deloitte-green: #86BC25;
-            --deloitte-blue: #0076A8;
-            --deloitte-grey: #62666A;
-            --deloitte-light-grey: #F4F4F4;
-            --background: #FAFBFC;
-            --surface: #FFFFFF;
-            --border-light: #E8EAED;
-            --text-primary: #202124;
-            --text-secondary: #5F6368;
-            --shadow-medium: 0 4px 12px rgba(60, 64, 67, 0.15);
-            --radius: 8px;
-            --radius-large: 12px;
+            /* Hierarchy Strategy Palette */
+            --primary-orange: #FF6B35;
+            --primary-blue: #264653;
+            --secondary-teal: #2A9D8F;
+            --neutral-gold: #E9C46A;
+
+            /* Extended Aesthetic Variables */
+            --surface-dark: #1a1f25;
+            --surface-mid: #2d3748;
+            --surface-light: #f7fafc;
+            --text-primary: #2d3748;
+            --text-secondary: #4a5568;
+            --text-accent: #e2e8f0;
+            --shadow-soft: 0 4px 20px rgba(38, 70, 83, 0.08);
+            --shadow-sharp: 0 8px 32px rgba(38, 70, 83, 0.15);
+            --gradient-neural: linear-gradient(135deg, var(--surface-dark) 0%, var(--primary-blue) 45%, var(--secondary-teal) 100%);
+            --gradient-data: radial-gradient(ellipse at top, rgba(255, 107, 53, 0.1) 0%, transparent 70%);
         }
 
         * {
@@ -48,10 +53,25 @@
         }
 
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: var(--background);
+            font-family: 'Crimson Text', Georgia, serif;
+            background: var(--surface-light);
+            background-image:
+                var(--gradient-data),
+                repeating-linear-gradient(
+                    45deg,
+                    transparent,
+                    transparent 2px,
+                    rgba(42, 157, 143, 0.03) 2px,
+                    rgba(42, 157, 143, 0.03) 4px
+                );
             color: var(--text-primary);
-            line-height: 1.5;
+            line-height: 1.65;
+            animation: pageReveal 0.8s ease-out;
+        }
+
+        @keyframes pageReveal {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         .container {
@@ -61,15 +81,21 @@
         }
 
         .header {
-            text-align: center;
-            margin-bottom: 40px;
-            background: var(--surface);
-            padding: 48px 32px;
-            border-radius: var(--radius-large);
-            box-shadow: var(--shadow-medium);
-            border: 1px solid var(--border-light);
             position: relative;
+            margin-bottom: 60px;
+            background: var(--gradient-neural);
+            padding: 80px 60px;
+            box-shadow: var(--shadow-sharp);
             overflow: hidden;
+            color: white;
+            text-align: left;
+            clip-path: polygon(0 0, 100% 0, 95% 100%, 0 100%);
+            animation: headerSlide 1s ease-out 0.2s both;
+        }
+
+        @keyframes headerSlide {
+            from { opacity: 0; transform: translateX(-50px); }
+            to { opacity: 1; transform: translateX(0); }
         }
 
         .header::before {
@@ -78,15 +104,54 @@
             top: 0;
             left: 0;
             right: 0;
-            height: 4px;
-            background: linear-gradient(90deg, var(--deloitte-green) 0%, var(--deloitte-blue) 100%);
+            bottom: 0;
+            background:
+                radial-gradient(circle at 20% 80%, rgba(255, 107, 53, 0.2) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(233, 196, 106, 0.15) 0%, transparent 50%),
+                repeating-linear-gradient(
+                    90deg,
+                    transparent,
+                    transparent 100px,
+                    rgba(255, 255, 255, 0.05) 100px,
+                    rgba(255, 255, 255, 0.05) 101px
+                );
+        }
+
+        .header-content {
+            position: relative;
+            z-index: 2;
+            max-width: 800px;
         }
 
         .header h1 {
-            font-size: 2.5rem;
-            font-weight: 700;
-            margin-bottom: 12px;
-            color: var(--text-primary);
+            font-family: 'Playfair Display', serif;
+            font-size: clamp(2.5rem, 5vw, 4rem);
+            font-weight: 600;
+            margin-bottom: 20px;
+            letter-spacing: -0.02em;
+            line-height: 1.1;
+            animation: titleReveal 1.2s ease-out 0.4s both;
+        }
+
+        @keyframes titleReveal {
+            from { opacity: 0; transform: translateY(30px) rotateX(15deg); }
+            to { opacity: 1; transform: translateY(0) rotateX(0deg); }
+        }
+
+        .header p {
+            font-family: 'Source Code Pro', monospace;
+            color: var(--text-accent);
+            font-size: 1.1rem;
+            font-weight: 300;
+            letter-spacing: 0.5px;
+            text-transform: lowercase;
+            opacity: 0.9;
+            animation: subtitleReveal 1.2s ease-out 0.6s both;
+        }
+
+        @keyframes subtitleReveal {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         .controls {
@@ -197,8 +262,10 @@
 <body>
     <div class="container">
         <header class="header">
-            <h1>📝 Notes Dashboard</h1>
-            <p>View and download user annotations from model voting sessions</p>
+            <div class="header-content">
+                <h1>User Feedback Repository</h1>
+                <p>qualitative insights • voting annotations • preference patterns</p>
+            </div>
         </header>
 
         <div class="controls">
